@@ -11,6 +11,12 @@ const translations = {
         'nav.signup': 'Get Started',
         'nav.logout': 'Logout',
 
+        // Footer Navigation
+        'nav.explore': 'Explore',
+        'nav.myPlans': 'My Plans',
+        'nav.inbox': 'Inbox',
+        'nav.profile': 'Profile',
+
         // Home Page
         'home.hero.title': 'Turn Lunch into',
         'home.hero.titleHighlight': 'Learning',
@@ -93,6 +99,12 @@ const translations = {
         'nav.login': 'ログイン',
         'nav.signup': '始める',
         'nav.logout': 'ログアウト',
+
+        // Footer Navigation
+        'nav.explore': '探す',
+        'nav.myPlans': '予定',
+        'nav.inbox': 'メッセージ',
+        'nav.profile': 'プロフィール',
 
         // Home Page
         'home.hero.title': 'ランチを、',

@@ -1,9 +1,14 @@
 import '@/styles/globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Noto_Sans_JP } from 'next/font/google'
 import { Providers } from './providers'
+import FooterNav from '@/components/FooterNav'
 
-const inter = Inter({ subsets: ['latin'] })
+const notoSansJP = Noto_Sans_JP({
+    subsets: ['latin'],
+    weight: ['300', '400', '500', '700', '900'],
+    variable: '--font-noto-sans-jp',
+})
 
 export const metadata: Metadata = {
     title: 'Power Lunch - Micro-sessions over lunch',
@@ -22,16 +27,17 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="ja">
+        <html lang="ja" className={notoSansJP.variable}>
             <head>
                 <link
                     rel="stylesheet"
                     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
                 />
             </head>
-            <body className={inter.className}>
+            <body className={`${notoSansJP.className} pb-20 md:pb-0`}>
                 <Providers>
                     {children}
+                    <FooterNav />
                 </Providers>
             </body>
         </html>

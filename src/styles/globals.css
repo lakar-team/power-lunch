@@ -2,8 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Google Fonts - Noto Sans JP for Japanese modern feel */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap');
+
 /* Power Lunch Custom Styles */
 :root {
+    /* Prototype Color Palette */
+    --color-primary: #2563EB;
+    --color-primary-light: #3B82F6;
+    --color-accent: #22C55E;
+    --color-dark: #1F2937;
+    --color-light: #F9FAFB;
+    --color-text: #111827;
+    --color-text-muted: #6B7280;
+
+    /* Border Radius */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+    --radius-full: 9999px;
+
+    /* Legacy */
     --foreground-rgb: 0, 0, 0;
     --background-start-rgb: 250, 250, 250;
     --background-end-rgb: 255, 255, 255;
@@ -14,7 +34,7 @@ body {
     background: linear-gradient(to bottom,
             transparent,
             rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Noto Sans JP', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* Premium Card Styles */
@@ -110,4 +130,207 @@ body {
 /* Map Pin */
 .pl-map-pin {
     @apply w-10 h-10 bg-black text-white rounded-full flex items-center justify-center shadow-lg cursor-pointer transform transition-transform hover:scale-110;
+}
+
+/* ============================================
+   PROTOTYPE DESIGN SYSTEM - From prototype/styles.css
+   ============================================ */
+
+/* Standardized Header */
+.pl-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: white;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pl-header-dark {
+    background: transparent;
+    border-bottom: none;
+    position: absolute;
+    width: 100%;
+}
+
+/* Logo with Blue Accent (prototype style) */
+.pl-logo-blue span {
+    color: var(--color-primary-light);
+}
+
+.pl-logo-white {
+    color: white;
+}
+
+/* Hero Gradient Overlay */
+.hero-gradient {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+/* Standardized Footer Navigation */
+.pl-footer-nav {
+    @apply fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 z-50;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pl-footer-nav-item {
+    @apply flex flex-col items-center cursor-pointer transition-colors duration-200;
+    color: #9CA3AF;
+    font-size: 10px;
+}
+
+.pl-footer-nav-item:hover {
+    color: var(--color-dark);
+}
+
+.pl-footer-nav-item.active {
+    color: var(--color-dark);
+    font-weight: 700;
+}
+
+.pl-footer-nav-item i {
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Language Toggle (Dark Variant) */
+.pl-lang-toggle-dark {
+    background: #F3F4F6;
+    color: var(--color-dark);
+}
+
+.pl-lang-toggle-dark:hover {
+    background: #E5E7EB;
+}
+
+/* Trust Badge */
+.pl-trust-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #F0FDF4;
+    border: 1px solid #BBF7D0;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #166534;
+}
+
+/* Social Proof */
+.pl-social-proof {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+/* Avatar Stack */
+.pl-avatar-stack {
+    display: flex;
+}
+
+.pl-avatar-stack img {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 2px solid white;
+    margin-left: -0.5rem;
+}
+
+.pl-avatar-stack img:first-child {
+    margin-left: 0;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+/* Fade In Up Animation */
+.pl-fade-in {
+    animation: plFadeIn 0.5s ease-out forwards;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+}
+
+@keyframes plFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Animation Delays */
+.delay-100 {
+    animation-delay: 0.1s;
+}
+
+.delay-200 {
+    animation-delay: 0.2s;
+}
+
+.delay-300 {
+    animation-delay: 0.3s;
+}
+
+.delay-400 {
+    animation-delay: 0.4s;
+}
+
+/* Hide Scrollbar Utility */
+.pl-hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.pl-hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Scroll Animate (starts hidden, animates on scroll) */
+.scroll-animate {
+    opacity: 0;
+}
+
+/* Filter Button Active State */
+.filter-btn.active {
+    @apply bg-black text-white shadow-md;
+}
+
+/* Tab Styles */
+.tab-active {
+    border-bottom: 2px solid black;
+    color: black;
+    font-weight: bold;
+}
+
+.tab-inactive {
+    color: #9CA3AF;
+    font-weight: bold;
 }
