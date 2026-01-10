@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
             // Update booking status to confirmed
             const { error } = await supabase
                 .from('bookings' as any)
+                // @ts-ignore - Supabase types mismatch
                 .update({ status: 'confirmed' })
                 .eq('stripe_payment_intent_id', paymentIntent.id)
 
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
             // Update transaction status
             await supabase
                 .from('transactions' as any)
+                // @ts-ignore - Supabase types mismatch
                 .update({ status: 'completed' })
                 .eq('stripe_charge_id', paymentIntent.id)
 
@@ -54,12 +56,14 @@ export async function POST(request: NextRequest) {
             // Update booking status to cancelled
             await supabase
                 .from('bookings' as any)
+                // @ts-ignore - Supabase types mismatch
                 .update({ status: 'cancelled' })
                 .eq('stripe_payment_intent_id', paymentIntent.id)
 
             // Update transaction status
             await supabase
                 .from('transactions' as any)
+                // @ts-ignore - Supabase types mismatch
                 .update({ status: 'failed' })
                 .eq('stripe_charge_id', paymentIntent.id)
 
@@ -73,6 +77,7 @@ export async function POST(request: NextRequest) {
             if (account.charges_enabled && account.payouts_enabled) {
                 await supabase
                     .from('hosts' as any)
+                    // @ts-ignore - Supabase types mismatch
                     .update({ is_verified: true })
                     .eq('stripe_account_id', account.id)
             }
@@ -86,6 +91,7 @@ export async function POST(request: NextRequest) {
             // Update transaction with refund info
             await supabase
                 .from('transactions' as any)
+                // @ts-ignore - Supabase types mismatch
                 .update({
                     status: 'refunded',
                     refund_amount_yen: charge.amount_refunded,
@@ -95,6 +101,7 @@ export async function POST(request: NextRequest) {
             // Update booking status
             await supabase
                 .from('bookings' as any)
+                // @ts-ignore - Supabase types mismatch
                 .update({ status: 'cancelled' })
                 .eq('stripe_payment_intent_id', charge.payment_intent)
 

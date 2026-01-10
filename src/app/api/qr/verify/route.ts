@@ -110,6 +110,7 @@ export async function PUT(request: NextRequest) {
     // Update booking status to in_progress
     const { data: booking, error } = await supabase
         .from('bookings' as any)
+        // @ts-ignore - Supabase types mismatch
         .update({ status: 'in_progress' })
         .eq('id', booking_id)
         .eq('status', 'confirmed')
