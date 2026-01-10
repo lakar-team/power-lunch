@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         cover_image_url: body.cover_image_url,
     }
     const { data: listing, error: listingError } = await supabase
-        .from('listings')
+        .from('listings' as any)
         .insert(listingData as any)
         .select()
         .single<{ id: string }>()
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
             end_time: slot.end_time,
         }))
 
-        await supabase.from('availability_slots').insert(slots as any)
+        await supabase.from('availability_slots' as any).insert(slots as any)
     }
 
     return NextResponse.json({ listing }, { status: 201 })

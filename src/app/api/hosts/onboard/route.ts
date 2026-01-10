@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
         } else {
             // Update existing host with Stripe account
             await supabase
-                .from('hosts')
-                .update({ stripe_account_id: stripeAccountId } as any)
+                .from('hosts' as any)
+                .update({ stripe_account_id: stripeAccountId })
                 .eq('id', existingHost.id)
         }
     }

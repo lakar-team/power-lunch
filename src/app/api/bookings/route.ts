@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
         status: 'pending' as const,
     }
     const { data: booking, error: bookingError } = await supabase
-        .from('bookings')
+        .from('bookings' as any)
         .insert(bookingData as any)
         .select()
         .single<{ id: string }>()
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
         stripe_charge_id: paymentIntent.id,
         status: 'pending' as const,
     }
-    await supabase.from('transactions').insert(transactionData as any)
+    await supabase.from('transactions' as any).insert(transactionData as any)
 
     return NextResponse.json({
         booking,
