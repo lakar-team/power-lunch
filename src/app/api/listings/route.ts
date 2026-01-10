@@ -75,13 +75,13 @@ export async function POST(request: NextRequest) {
         .from('hosts')
         .select('id')
         .eq('user_id', user.id)
-        .single()
+        .single<{ id: string }>()
 
     if (hostError || !host) {
         return NextResponse.json({ error: 'Host profile not found' }, { status: 404 })
     }
 
-    const hostId = host.id as string
+    const hostId = host.id
     const body = await request.json()
 
     // Validate required fields

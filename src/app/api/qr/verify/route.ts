@@ -32,13 +32,13 @@ export async function POST(request: NextRequest) {
         .from('hosts')
         .select('id')
         .eq('user_id', user.id)
-        .single()
+        .single<{ id: string }>()
 
     if (!host) {
         return NextResponse.json({ error: 'Host profile not found' }, { status: 404 })
     }
 
-    const hostId = host.id as string
+    const hostId = host.id
 
     // Find booking with this QR code for this host
     const { data: booking, error: bookingError } = await supabase

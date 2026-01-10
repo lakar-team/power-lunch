@@ -25,13 +25,13 @@ export async function GET(request: NextRequest) {
             .from('hosts')
             .select('id')
             .eq('user_id', user.id)
-            .single()
+            .single<{ id: string }>()
 
         if (!host) {
             return NextResponse.json({ bookings: [] })
         }
 
-        const hostId = host.id as string
+        const hostId = host.id
 
         query = supabase
             .from('bookings')
