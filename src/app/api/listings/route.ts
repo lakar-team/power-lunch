@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Host profile not found' }, { status: 404 })
     }
 
+    const hostId = host.id as string
     const body = await request.json()
 
     // Validate required fields
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
     const { data: listing, error: listingError } = await supabase
         .from('listings')
         .insert({
-            host_id: host.id,
+            host_id: hostId,
             title: body.title,
             description: body.description,
             category: body.category,

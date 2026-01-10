@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Host profile not found' }, { status: 404 })
     }
 
+    const hostId = host.id as string
+
     // Find booking with this QR code for this host
     const { data: booking, error: bookingError } = await supabase
         .from('bookings')
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
       listing:listings (*)
     `)
         .eq('qr_code_hash', qrHash)
-        .eq('host_id', host.id)
+        .eq('host_id', hostId)
         .eq('status', 'confirmed')
         .single()
 
@@ -68,12 +70,16 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
     }
 
+    // Cast nested objects
+    const bookingGuest = booking.guest as { full_name: string }
+    const bookingListing = booking.listing as { title: string }
+
     return NextResponse.json({
         valid: true,
         booking: {
             id: booking.id,
-            guest_name: booking.guest.full_name,
-            listing_title: booking.listing.title,
+            guest_name: bookingGuest.full_name,
+            listing_title: bookingListing.title,
             start_time: booking.start_time,
             end_time: booking.end_time,
         },

@@ -31,6 +31,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ bookings: [] })
         }
 
+        const hostId = host.id as string
+
         query = supabase
             .from('bookings')
             .select(`
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
         listing:listings (*),
         guest:profiles!bookings_guest_id_fkey (*)
       `)
-            .eq('host_id', host.id)
+            .eq('host_id', hostId)
     } else {
         // Get bookings where user is the guest
         query = supabase
@@ -102,13 +104,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
     }
 
+    // Cast host to expected type
+    const listingHost = listing.host as { id: string; user_id: string; stripe_account_id: string | null }
+
     // Prevent booking own listing
-    if (listing.host.user_id === user.id) {
+    if (listingHost.user_id === user.id) {
         return NextResponse.json({ error: 'Cannot book your own listing' }, { status: 400 })
     }
 
     // Check if host has Stripe account for payments
-    if (!listing.host.stripe_account_id) {
+    if (!listingHost.stripe_account_id) {
         return NextResponse.json({ error: 'Host is not set up for payments' }, { status: 400 })
     }
 
@@ -132,7 +137,7 @@ export async function POST(request: NextRequest) {
     try {
         paymentIntent = await createPaymentIntent(
             listing.price_yen,
-            listing.host.stripe_account_id,
+            listingHost.stripe_account_id,
             'pending' // Will update after booking is created
         )
     } catch (stripeError: any) {
@@ -145,7 +150,7 @@ export async function POST(request: NextRequest) {
         .insert({
             listing_id: body.listing_id,
             guest_id: user.id,
-            host_id: listing.host.id,
+            host_id: listingHost.id,
             booking_date: body.booking_date,
             start_time: startTime,
             end_time: endTime,
