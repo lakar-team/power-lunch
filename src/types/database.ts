@@ -156,7 +156,9 @@ export interface Database {
                     end_time: string
                     venue_selected?: string | null
                     guest_note?: string | null
+                    qr_code_hash?: string | null
                     stripe_payment_intent_id?: string | null
+                    status?: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
                 }
                 Update: {
                     venue_selected?: string | null
