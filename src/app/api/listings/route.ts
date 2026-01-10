@@ -107,10 +107,10 @@ export async function POST(request: NextRequest) {
         .from('listings')
         .insert(listingData as any)
         .select()
-        .single()
+        .single<{ id: string }>()
 
-    if (listingError) {
-        return NextResponse.json({ error: listingError.message }, { status: 500 })
+    if (listingError || !listing) {
+        return NextResponse.json({ error: listingError?.message || 'Failed to create listing' }, { status: 500 })
     }
 
     // Create availability slots if provided

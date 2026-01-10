@@ -167,10 +167,10 @@ export async function POST(request: NextRequest) {
         .from('bookings')
         .insert(bookingData as any)
         .select()
-        .single()
+        .single<{ id: string }>()
 
-    if (bookingError) {
-        return NextResponse.json({ error: bookingError.message }, { status: 500 })
+    if (bookingError || !booking) {
+        return NextResponse.json({ error: bookingError?.message || 'Failed to create booking' }, { status: 500 })
     }
 
     // Create transaction record
