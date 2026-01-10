@@ -150,21 +150,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Create booking
+    const bookingData = {
+        listing_id: body.listing_id,
+        guest_id: user.id,
+        host_id: listingHost.id,
+        booking_date: body.booking_date,
+        start_time: startTime,
+        end_time: endTime,
+        venue_selected: body.venue_selected,
+        guest_note: body.guest_note,
+        qr_code_hash: qrCodeHash,
+        stripe_payment_intent_id: paymentIntent.id,
+        status: 'pending' as const,
+    }
     const { data: booking, error: bookingError } = await supabase
         .from('bookings')
-        .insert({
-            listing_id: body.listing_id,
-            guest_id: user.id,
-            host_id: listingHost.id,
-            booking_date: body.booking_date,
-            start_time: startTime,
-            end_time: endTime,
-            venue_selected: body.venue_selected,
-            guest_note: body.guest_note,
-            qr_code_hash: qrCodeHash,
-            stripe_payment_intent_id: paymentIntent.id,
-            status: 'pending',
-        })
+        .insert(bookingData as any)
         .select()
         .single()
 
@@ -174,14 +175,15 @@ export async function POST(request: NextRequest) {
 
     // Create transaction record
     const fees = calculateFees(listing.price_yen)
-    await supabase.from('transactions').insert({
+    const transactionData = {
         booking_id: booking.id,
         amount_yen: fees.totalAmount,
         platform_fee_yen: fees.platformFee,
         host_payout_yen: fees.hostPayout,
         stripe_charge_id: paymentIntent.id,
-        status: 'pending',
-    })
+        status: 'pending' as const,
+    }
+    await supabase.from('transactions').insert(transactionData as any)
 
     return NextResponse.json({
         booking,

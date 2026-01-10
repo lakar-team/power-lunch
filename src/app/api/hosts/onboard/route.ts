@@ -30,12 +30,13 @@ export async function POST(request: NextRequest) {
 
         if (!existingHost) {
             // Create host profile
+            const hostData = {
+                user_id: user.id,
+                stripe_account_id: stripeAccountId,
+            }
             const { error: hostError } = await supabase
                 .from('hosts')
-                .insert({
-                    user_id: user.id,
-                    stripe_account_id: stripeAccountId,
-                })
+                .insert(hostData as any)
 
             if (hostError) {
                 return NextResponse.json({ error: hostError.message }, { status: 500 })
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
             // Update existing host with Stripe account
             await supabase
                 .from('hosts')
-                .update({ stripe_account_id: stripeAccountId })
+                .update({ stripe_account_id: stripeAccountId } as any)
                 .eq('id', existingHost.id)
         }
     }

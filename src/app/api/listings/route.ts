@@ -90,21 +90,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Create listing
+    const listingData = {
+        host_id: hostId,
+        title: body.title,
+        description: body.description,
+        category: body.category,
+        price_yen: body.price_yen,
+        duration_minutes: body.duration_minutes || 30,
+        location_lat: body.location_lat,
+        location_lng: body.location_lng,
+        location_area: body.location_area,
+        venue_options: body.venue_options || [],
+        cover_image_url: body.cover_image_url,
+    }
     const { data: listing, error: listingError } = await supabase
         .from('listings')
-        .insert({
-            host_id: hostId,
-            title: body.title,
-            description: body.description,
-            category: body.category,
-            price_yen: body.price_yen,
-            duration_minutes: body.duration_minutes || 30,
-            location_lat: body.location_lat,
-            location_lng: body.location_lng,
-            location_area: body.location_area,
-            venue_options: body.venue_options || [],
-            cover_image_url: body.cover_image_url,
-        })
+        .insert(listingData as any)
         .select()
         .single()
 
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
             end_time: slot.end_time,
         }))
 
-        await supabase.from('availability_slots').insert(slots)
+        await supabase.from('availability_slots').insert(slots as any)
     }
 
     return NextResponse.json({ listing }, { status: 201 })
