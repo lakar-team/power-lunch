@@ -96,14 +96,14 @@ export async function POST(request: NextRequest) {
                     status: 'refunded',
                     refund_amount_yen: charge.amount_refunded,
                 })
-                .eq('stripe_charge_id', charge.payment_intent)
+                .eq('stripe_charge_id', charge.payment_intent as string)
 
             // Update booking status
             await supabase
                 .from('bookings' as any)
                 // @ts-ignore - Supabase types mismatch
                 .update({ status: 'cancelled' })
-                .eq('stripe_payment_intent_id', charge.payment_intent)
+                .eq('stripe_payment_intent_id', charge.payment_intent as string)
 
             break
         }
