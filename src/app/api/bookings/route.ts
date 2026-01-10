@@ -87,6 +87,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get listing details
+    type ListingWithHost = {
+        id: string
+        price_yen: number
+        duration_minutes: number
+        host: { id: string; user_id: string; stripe_account_id: string | null }
+    }
     const { data: listing, error: listingError } = await supabase
         .from('listings')
         .select(`
@@ -98,14 +104,13 @@ export async function POST(request: NextRequest) {
       )
     `)
         .eq('id', body.listing_id)
-        .single()
+        .single<ListingWithHost>()
 
     if (listingError || !listing) {
         return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
     }
 
-    // Cast host to expected type
-    const listingHost = listing.host as { id: string; user_id: string; stripe_account_id: string | null }
+    const listingHost = listing.host
 
     // Prevent booking own listing
     if (listingHost.user_id === user.id) {

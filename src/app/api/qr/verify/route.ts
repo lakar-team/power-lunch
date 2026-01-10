@@ -41,6 +41,14 @@ export async function POST(request: NextRequest) {
     const hostId = host.id
 
     // Find booking with this QR code for this host
+    type BookingWithDetails = {
+        id: string
+        booking_date: string
+        start_time: string
+        end_time: string
+        guest: { full_name: string }
+        listing: { title: string }
+    }
     const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .select(`
@@ -51,7 +59,7 @@ export async function POST(request: NextRequest) {
         .eq('qr_code_hash', qrHash)
         .eq('host_id', hostId)
         .eq('status', 'confirmed')
-        .single()
+        .single<BookingWithDetails>()
 
     if (bookingError || !booking) {
         return NextResponse.json({
@@ -70,16 +78,12 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
     }
 
-    // Cast nested objects
-    const bookingGuest = booking.guest as { full_name: string }
-    const bookingListing = booking.listing as { title: string }
-
     return NextResponse.json({
         valid: true,
         booking: {
             id: booking.id,
-            guest_name: bookingGuest.full_name,
-            listing_title: bookingListing.title,
+            guest_name: booking.guest.full_name,
+            listing_title: booking.listing.title,
             start_time: booking.start_time,
             end_time: booking.end_time,
         },
