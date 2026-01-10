@@ -4,9 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 
 export default function LoginPage() {
     const router = useRouter()
+    const { t } = useTranslation()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
@@ -35,18 +37,19 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Header */}
-            <header className="bg-white border-b border-gray-100 px-4 py-4">
+            <header className="bg-white border-b border-gray-100 px-4 py-4 flex justify-between items-center">
                 <Link href="/" className="pl-logo text-xl">
                     POWER<span>LUNCH</span>.
                 </Link>
+                <LanguageToggle />
             </header>
 
             {/* Login Form */}
             <div className="flex-1 flex items-center justify-center p-4">
                 <div className="w-full max-w-md">
                     <div className="bg-white rounded-2xl shadow-lg p-8">
-                        <h1 className="text-2xl font-black text-center mb-2">おかえりなさい</h1>
-                        <p className="text-gray-500 text-center mb-8">アカウントにログイン</p>
+                        <h1 className="text-2xl font-black text-center mb-2">{t('auth.login.title')}</h1>
+                        <p className="text-gray-500 text-center mb-8">{t('auth.login.subtitle')}</p>
 
                         {error && (
                             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm">
@@ -57,7 +60,7 @@ export default function LoginPage() {
                         <form onSubmit={handleLogin} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">
-                                    メールアドレス
+                                    {t('auth.login.email')}
                                 </label>
                                 <input
                                     type="email"
@@ -71,7 +74,7 @@ export default function LoginPage() {
 
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">
-                                    パスワード
+                                    {t('auth.login.password')}
                                 </label>
                                 <input
                                     type="password"
@@ -86,7 +89,7 @@ export default function LoginPage() {
 
                             <div className="flex justify-end">
                                 <Link href="/auth/reset" className="text-sm text-green-600 hover:underline">
-                                    パスワードをお忘れですか？
+                                    {t('auth.login.forgot')}
                                 </Link>
                             </div>
 
@@ -95,15 +98,15 @@ export default function LoginPage() {
                                 disabled={loading}
                                 className="w-full pl-btn pl-btn-primary"
                             >
-                                {loading ? 'ログイン中...' : 'ログイン'}
+                                {loading ? t('auth.login.loading') : t('auth.login.btn')}
                             </button>
                         </form>
 
                         <div className="mt-8 text-center">
                             <p className="text-gray-500">
-                                アカウントをお持ちでないですか？{' '}
+                                {t('auth.login.noAccount')}{' '}
                                 <Link href="/auth/signup" className="text-green-600 font-bold hover:underline">
-                                    新規登録
+                                    {t('auth.login.signupLink')}
                                 </Link>
                             </p>
                         </div>

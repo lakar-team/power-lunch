@@ -1,6 +1,22 @@
+'use client'
+
 import Link from 'next/link'
+import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 
 export default function HomePage() {
+    const { t } = useTranslation()
+
+    const categories = [
+        { key: 'home.category.english' as const, icon: 'fa-language', color: 'bg-red-100 text-red-600' },
+        { key: 'home.category.programming' as const, icon: 'fa-code', color: 'bg-blue-100 text-blue-600' },
+        { key: 'home.category.design' as const, icon: 'fa-palette', color: 'bg-purple-100 text-purple-600' },
+        { key: 'home.category.business' as const, icon: 'fa-briefcase', color: 'bg-green-100 text-green-600' },
+        { key: 'home.category.cooking' as const, icon: 'fa-utensils', color: 'bg-orange-100 text-orange-600' },
+        { key: 'home.category.music' as const, icon: 'fa-music', color: 'bg-pink-100 text-pink-600' },
+        { key: 'home.category.photography' as const, icon: 'fa-camera', color: 'bg-yellow-100 text-yellow-600' },
+        { key: 'home.category.other' as const, icon: 'fa-ellipsis', color: 'bg-gray-100 text-gray-600' },
+    ]
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
             {/* Header */}
@@ -10,11 +26,12 @@ export default function HomePage() {
                         POWER<span>LUNCH</span>.
                     </Link>
                     <div className="flex items-center space-x-4">
+                        <LanguageToggle />
                         <Link href="/auth/login" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                            ログイン
+                            {t('nav.login')}
                         </Link>
                         <Link href="/auth/signup" className="pl-btn pl-btn-primary text-sm">
-                            始める
+                            {t('nav.signup')}
                         </Link>
                     </div>
                 </div>
@@ -23,19 +40,18 @@ export default function HomePage() {
             {/* Hero Section */}
             <section className="max-w-6xl mx-auto px-4 py-20 text-center">
                 <h1 className="text-5xl md:text-6xl font-black mb-6 leading-tight">
-                    ランチを、<span className="text-green-500">学び</span>に。
+                    {t('home.hero.title')}<span className="text-green-500">{t('home.hero.titleHighlight')}</span>に。
                 </h1>
                 <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-                    30分のミニセッションで、新しいスキルを学んだり、
-                    面白い人と出会ったり。ランチタイムを有効活用しよう。
+                    {t('home.hero.subtitle')}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Link href="/search" className="pl-btn pl-btn-primary text-lg px-10">
                         <i className="fa-solid fa-search mr-2"></i>
-                        ホストを探す
+                        {t('home.hero.searchBtn')}
                     </Link>
                     <Link href="/host/onboard" className="pl-btn pl-btn-secondary text-lg px-10">
-                        ホストになる
+                        {t('home.hero.hostBtn')}
                     </Link>
                 </div>
             </section>
@@ -43,28 +59,28 @@ export default function HomePage() {
             {/* How It Works */}
             <section className="bg-white py-20">
                 <div className="max-w-6xl mx-auto px-4">
-                    <h2 className="text-3xl font-black text-center mb-12">使い方</h2>
+                    <h2 className="text-3xl font-black text-center mb-12">{t('home.howItWorks')}</h2>
                     <div className="grid md:grid-cols-3 gap-8">
                         <div className="text-center">
                             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i className="fa-solid fa-search text-2xl text-green-600"></i>
                             </div>
-                            <h3 className="font-bold text-lg mb-2">1. ホストを探す</h3>
-                            <p className="text-gray-600">興味のあるトピックや近くのホストを地図から探そう</p>
+                            <h3 className="font-bold text-lg mb-2">{t('home.step1.title')}</h3>
+                            <p className="text-gray-600">{t('home.step1.desc')}</p>
                         </div>
                         <div className="text-center">
                             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i className="fa-solid fa-calendar-check text-2xl text-blue-600"></i>
                             </div>
-                            <h3 className="font-bold text-lg mb-2">2. 予約する</h3>
-                            <p className="text-gray-600">都合の良い時間を選んで、サクッと予約</p>
+                            <h3 className="font-bold text-lg mb-2">{t('home.step2.title')}</h3>
+                            <p className="text-gray-600">{t('home.step2.desc')}</p>
                         </div>
                         <div className="text-center">
                             <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i className="fa-solid fa-utensils text-2xl text-purple-600"></i>
                             </div>
-                            <h3 className="font-bold text-lg mb-2">3. 会って学ぶ</h3>
-                            <p className="text-gray-600">カフェやレストランで30分のセッションを楽しもう</p>
+                            <h3 className="font-bold text-lg mb-2">{t('home.step3.title')}</h3>
+                            <p className="text-gray-600">{t('home.step3.desc')}</p>
                         </div>
                     </div>
                 </div>
@@ -73,27 +89,18 @@ export default function HomePage() {
             {/* Categories */}
             <section className="py-20">
                 <div className="max-w-6xl mx-auto px-4">
-                    <h2 className="text-3xl font-black text-center mb-12">人気のカテゴリ</h2>
+                    <h2 className="text-3xl font-black text-center mb-12">{t('home.categories')}</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                            { name: '英会話', icon: 'fa-language', color: 'bg-red-100 text-red-600' },
-                            { name: 'プログラミング', icon: 'fa-code', color: 'bg-blue-100 text-blue-600' },
-                            { name: 'デザイン', icon: 'fa-palette', color: 'bg-purple-100 text-purple-600' },
-                            { name: 'ビジネス', icon: 'fa-briefcase', color: 'bg-green-100 text-green-600' },
-                            { name: '料理', icon: 'fa-utensils', color: 'bg-orange-100 text-orange-600' },
-                            { name: '音楽', icon: 'fa-music', color: 'bg-pink-100 text-pink-600' },
-                            { name: '写真', icon: 'fa-camera', color: 'bg-yellow-100 text-yellow-600' },
-                            { name: 'その他', icon: 'fa-ellipsis', color: 'bg-gray-100 text-gray-600' },
-                        ].map((cat) => (
+                        {categories.map((cat) => (
                             <Link
-                                key={cat.name}
-                                href={`/search?category=${cat.name}`}
+                                key={cat.key}
+                                href={`/search?category=${t(cat.key)}`}
                                 className="pl-card p-6 flex flex-col items-center hover:shadow-lg"
                             >
                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${cat.color}`}>
                                     <i className={`fa-solid ${cat.icon} text-xl`}></i>
                                 </div>
-                                <span className="font-bold">{cat.name}</span>
+                                <span className="font-bold">{t(cat.key)}</span>
                             </Link>
                         ))}
                     </div>
@@ -103,13 +110,12 @@ export default function HomePage() {
             {/* CTA */}
             <section className="bg-black text-white py-20">
                 <div className="max-w-4xl mx-auto px-4 text-center">
-                    <h2 className="text-3xl font-black mb-6">あなたのスキルを共有しませんか？</h2>
+                    <h2 className="text-3xl font-black mb-6">{t('home.cta.title')}</h2>
                     <p className="text-gray-400 mb-8">
-                        ランチタイムを使って、経験やスキルを共有しよう。<br />
-                        お小遣い稼ぎにもなります。
+                        {t('home.cta.subtitle')}
                     </p>
                     <Link href="/host/onboard" className="pl-btn pl-btn-success text-lg px-10">
-                        ホスト登録する
+                        {t('home.cta.btn')}
                     </Link>
                 </div>
             </section>
@@ -122,10 +128,10 @@ export default function HomePage() {
                             POWER<span>LUNCH</span>.
                         </div>
                         <div className="flex space-x-6 text-sm text-gray-500">
-                            <Link href="/about">About</Link>
-                            <Link href="/privacy">プライバシー</Link>
-                            <Link href="/terms">利用規約</Link>
-                            <Link href="/contact">お問い合わせ</Link>
+                            <Link href="/about">{t('footer.about')}</Link>
+                            <Link href="/privacy">{t('footer.privacy')}</Link>
+                            <Link href="/terms">{t('footer.terms')}</Link>
+                            <Link href="/contact">{t('footer.contact')}</Link>
                         </div>
                     </div>
                     <p className="text-center text-gray-400 text-sm mt-8">
