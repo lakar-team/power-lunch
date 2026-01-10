@@ -1,8 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-    const response = NextResponse.next()
+    let response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
+    })
 
     // Protected routes that require authentication
     const protectedPaths = ['/booking', '/host', '/profile', '/messages']
@@ -23,19 +27,31 @@ export async function middleware(request: NextRequest) {
                 get(name: string) {
                     return request.cookies.get(name)?.value
                 },
-                set(name: string, value: string, options: any) {
+                set(name: string, value: string, options: CookieOptions) {
+                    request.cookies.set({ name, value, ...options })
+                    response = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
                     response.cookies.set({ name, value, ...options })
                 },
-                remove(name: string, options: any) {
-                    response.cookies.delete({ name, ...options })
+                remove(name: string, options: CookieOptions) {
+                    request.cookies.set({ name, value: '', ...options })
+                    response = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
+                    response.cookies.set({ name, value: '', ...options })
                 },
             },
         }
     )
 
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    if (!session) {
+    if (!user) {
         const redirectUrl = new URL('/auth/login', request.url)
         redirectUrl.searchParams.set('next', path)
         return NextResponse.redirect(redirectUrl)
