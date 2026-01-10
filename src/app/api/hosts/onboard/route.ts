@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
             // Update existing host with Stripe account
             await supabase
                 .from('hosts')
+                // @ts-ignore - Supabase types mismatch
                 .update({ stripe_account_id: stripeAccountId })
                 .eq('id', existingHost.id)
         }
