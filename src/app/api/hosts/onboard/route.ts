@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
             }
         } else {
             // Update existing host with Stripe account
-            // @ts-expect-error Supabase types mismatch - runtime code is correct
             await supabase
                 .from('hosts')
                 .update({ stripe_account_id: stripeAccountId })
