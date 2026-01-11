@@ -30,6 +30,7 @@ function OnboardContent() {
     // Profile data
     const [bio, setBio] = useState('')
     const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+    const [termsAccepted, setTermsAccepted] = useState(false)
 
     // Check auth and refresh param
     useEffect(() => {
@@ -248,6 +249,26 @@ function OnboardContent() {
                 </ul>
             </div>
 
+            {/* Terms Acceptance */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 text-left">
+                <label className="flex items-start cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        className="mt-1 mr-3 w-5 h-5 rounded border-gray-300 text-black focus:ring-black"
+                    />
+                    <span className="text-sm text-gray-700">
+                        I have read and agree to the{' '}
+                        <Link href="/terms" target="_blank" className="text-blue-600 hover:underline font-medium">
+                            Terms of Service
+                        </Link>
+                        , including the platform fee structure (15%), tax responsibilities, and limitation of liability.
+                        I understand that Power Lunch acts as an intermediary and I am responsible for my own tax obligations.
+                    </span>
+                </label>
+            </div>
+
             {error && (
                 <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm">
                     {error}
@@ -256,7 +277,7 @@ function OnboardContent() {
 
             <button
                 onClick={handleStartStripeOnboarding}
-                disabled={loading}
+                disabled={loading || !termsAccepted}
                 className="pl-btn pl-btn-success text-lg px-12 w-full mb-4 disabled:opacity-50"
             >
                 {loading ? (
