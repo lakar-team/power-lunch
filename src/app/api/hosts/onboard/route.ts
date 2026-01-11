@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
         .from('hosts')
         .select('id, stripe_account_id')
         .eq('user_id', user.id)
-        .single<{ id: string; stripe_account_id: string | null }>()
+        .single() // Removed generic
 
     let stripeAccountId: string
 
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         .from('hosts')
         .select('id, stripe_account_id, is_verified')
         .eq('user_id', user.id)
-        .single<{ id: string; stripe_account_id: string | null; is_verified: boolean }>()
+        .single() // Removed generic
 
     if (!host) {
         return NextResponse.json({
