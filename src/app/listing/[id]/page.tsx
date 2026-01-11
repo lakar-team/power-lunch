@@ -180,7 +180,7 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                     className="w-full h-full object-cover"
                 />
                 <button className="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold shadow-sm hover:bg-white transition">
-                    {listing.host?.total_sessions > 0 ? (
+                    {(listing.host?.total_sessions || 0) > 0 ? (
                         <>
                             <i className="fa-solid fa-star text-yellow-400"></i> {listing.host?.rating_avg?.toFixed(1)} ({listing.host?.total_sessions} sessions)
                         </>
