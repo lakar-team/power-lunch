@@ -30,6 +30,26 @@ export async function getBookings(params?: {
 }
 
 /**
+ * Fetch a single booking by ID
+ */
+export async function getBooking(id: string): Promise<{ booking: Booking | null; error: string | null }> {
+    try {
+        const response = await fetch(`/api/bookings/${id}`)
+
+        if (!response.ok) {
+            const errorData = await response.json()
+            return { booking: null, error: errorData.error || 'Failed to fetch booking' }
+        }
+
+        const data = await response.json()
+        return { booking: data.booking, error: null }
+    } catch (error) {
+        console.error('Error fetching booking:', error)
+        return { booking: null, error: 'Network error' }
+    }
+}
+
+/**
  * Create a new booking
  */
 export async function createBooking(
