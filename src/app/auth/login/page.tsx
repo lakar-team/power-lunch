@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 
 export default function LoginPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const redirectTo = searchParams.get('redirect') || '/search'
     const { t } = useTranslation()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -30,7 +32,7 @@ export default function LoginPage() {
             return
         }
 
-        router.push('/search')
+        router.push(redirectTo)
         router.refresh()
     }
 
@@ -105,7 +107,7 @@ export default function LoginPage() {
                         <div className="mt-8 text-center">
                             <p className="text-gray-500">
                                 {t('auth.login.noAccount')}{' '}
-                                <Link href="/auth/signup" className="text-green-600 font-bold hover:underline">
+                                <Link href={`/auth/signup${redirectTo !== '/search' ? `?redirect=${redirectTo}` : ''}`} className="text-green-600 font-bold hover:underline">
                                     {t('auth.login.signupLink')}
                                 </Link>
                             </p>

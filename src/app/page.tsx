@@ -60,7 +60,7 @@ export default function HomePage() {
                     <div className="flex items-center space-x-3">
                         <LanguageToggle />
                         <Link
-                            href="/search"
+                            href="/auth/login"
                             className="text-sm font-bold border border-white/30 px-4 py-2 rounded-full hover:bg-white hover:text-black transition"
                         >
                             {t('nav.login')}
@@ -80,13 +80,23 @@ export default function HomePage() {
                         {t('home.hero.subtitle')}
                     </p>
 
-                    <Link
-                        href="/search"
-                        className="inline-flex items-center justify-center w-full md:w-auto bg-white text-black text-lg font-bold py-4 px-8 rounded-full shadow-2xl hover:bg-gray-100 hover:scale-105 transition transform"
-                    >
-                        <i className="fa-solid fa-magnifying-glass mr-2"></i>
-                        {t('home.hero.searchBtn')}
-                    </Link>
+                    {/* Dual CTAs */}
+                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center">
+                        <Link
+                            href="/search"
+                            className="inline-flex items-center justify-center bg-white text-black text-lg font-bold py-4 px-8 rounded-full shadow-2xl hover:bg-gray-100 hover:scale-105 transition transform"
+                        >
+                            <i className="fa-solid fa-magnifying-glass mr-2"></i>
+                            {t('home.hero.searchBtn')}
+                        </Link>
+                        <Link
+                            href="/auth/login?redirect=/host/onboard"
+                            className="inline-flex items-center justify-center border-2 border-white text-white text-lg font-bold py-4 px-8 rounded-full hover:bg-white hover:text-black transition transform"
+                        >
+                            <i className="fa-solid fa-plus mr-2"></i>
+                            {t('home.hero.hostBtn')}
+                        </Link>
+                    </div>
 
                     <p className="mt-6 text-sm text-gray-300">No subscription. Pay per session.</p>
 
