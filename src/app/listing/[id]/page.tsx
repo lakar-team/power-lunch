@@ -147,9 +147,6 @@ export default function ListingPage({ params }: { params: { id: string } }) {
         )
     }
 
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-    const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             {/* Header */}
