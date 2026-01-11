@@ -47,9 +47,9 @@ export default function FooterNav() {
     const pathname = usePathname()
     const { t } = useTranslation()
 
-    // Don't show footer nav on landing page or auth pages
+    // Don't show footer nav on landing page, auth pages, OR host pages
     const hideOnPaths = ['/', '/auth/login', '/auth/signup']
-    if (hideOnPaths.includes(pathname)) {
+    if (hideOnPaths.includes(pathname) || pathname.startsWith('/host')) {
         return null
     }
 

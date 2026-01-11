@@ -8,17 +8,7 @@ export async function middleware(request: NextRequest) {
         },
     })
 
-    // Protected routes that require authentication
-    const protectedPaths = ['/booking', '/host', '/profile', '/messages']
-    const path = request.nextUrl.pathname
-
-    const isProtected = protectedPaths.some(p => path.startsWith(p))
-
-    if (!isProtected) {
-        return response
-    }
-
-    // Check for authentication
+    // Create supabase client to handle session refreshing
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -49,9 +39,16 @@ export async function middleware(request: NextRequest) {
         }
     )
 
+    // IMPORTANT: This call refreshes the session cookie if it's about to expire.
+    // We must call this on every request, not just protected ones.
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
+    // Protected routes that require authentication
+    const protectedPaths = ['/booking', '/host', '/profile', '/messages']
+    const path = request.nextUrl.pathname
+    const isProtected = protectedPaths.some(p => path.startsWith(p))
+
+    if (isProtected && !user) {
         const redirectUrl = new URL('/auth/login', request.url)
         redirectUrl.searchParams.set('next', path)
         return NextResponse.redirect(redirectUrl)
