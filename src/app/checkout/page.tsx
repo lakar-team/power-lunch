@@ -1,4 +1,3 @@
-```javascript
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
@@ -36,7 +35,7 @@ function CheckoutForm({ total, bookingId }: { total: number, bookingId: string }
             elements,
             confirmParams: {
                 // Redirect to ticket page on success
-                return_url: `${ window.location.origin } /ticket/${ bookingId } `,
+                return_url: `${window.location.origin} /ticket/${bookingId} `,
             },
         })
 
@@ -50,7 +49,7 @@ function CheckoutForm({ total, bookingId }: { total: number, bookingId: string }
     return (
         <form onSubmit={handleSubmit}>
             <PaymentElement />
-            
+
             {message && <div className="text-red-500 text-sm mt-4">{message}</div>}
 
             {/* Pay Button */}
@@ -61,7 +60,7 @@ function CheckoutForm({ total, bookingId }: { total: number, bookingId: string }
                         disabled={isLoading || !stripe || !elements}
                         className="block w-full bg-black text-white text-center py-3 rounded-xl font-bold shadow-lg hover:bg-gray-800 transform transition active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                        {isLoading ? 'Processing...' : `Confirm & Pay ¥${ total.toLocaleString() } `}
+                        {isLoading ? 'Processing...' : `Confirm & Pay ¥${total.toLocaleString()} `}
                     </button>
                     <p className="text-[10px] text-gray-400 text-center mt-2">
                         By confirming, you agree to the Host's House Rules.
@@ -76,7 +75,7 @@ function CheckoutContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const { t } = useTranslation()
-    
+
     const [listing, setListing] = useState<Listing | null>(null)
     const [loading, setLoading] = useState(true)
     const [clientSecret, setClientSecret] = useState<string | null>(null)
@@ -99,13 +98,13 @@ function CheckoutContent() {
 
             // 1. Fetch Listing Details
             const { listing: listingData, error: listingError } = await getListing(listingId)
-            
+
             if (listingError || !listingData) {
                 setError(listingError || 'Listing not found')
                 setLoading(false)
                 return
             }
-            
+
             setListing(listingData)
 
             // 2. Create Pending Booking & Payment Intent
@@ -130,7 +129,7 @@ function CheckoutContent() {
                 setClientSecret(payment.clientSecret)
                 setBookingId(booking.id)
             }
-            
+
             setLoading(false)
         }
 
@@ -190,10 +189,10 @@ function CheckoutContent() {
 
                 {/* Order Summary */}
                 <section className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex space-x-4">
-                    <img 
-                      src={listing.cover_image_url || '/placeholder.jpg'} 
-                      className="w-16 h-16 rounded-lg object-cover" 
-                      alt="Listing" 
+                    <img
+                        src={listing.cover_image_url || '/placeholder.jpg'}
+                        className="w-16 h-16 rounded-lg object-cover"
+                        alt="Listing"
                     />
                     <div className="flex-1">
                         <h2 className="text-sm font-bold text-gray-900 leading-tight line-clamp-2">{listing.title}</h2>
@@ -228,18 +227,18 @@ function CheckoutContent() {
                         <i className="fa-solid fa-lock text-green-500 mr-2"></i>
                         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Secure Payment</h3>
                     </div>
-                    
+
                     {clientSecret && bookingId ? (
-                        <Elements stripe={stripePromise} options={{ 
-                            clientSecret, 
-                            appearance: { theme: 'stripe' } 
+                        <Elements stripe={stripePromise} options={{
+                            clientSecret,
+                            appearance: { theme: 'stripe' }
                         }}>
                             <CheckoutForm total={Math.round(total)} bookingId={bookingId} />
                         </Elements>
                     ) : (
-                         <div className="text-center py-4">
+                        <div className="text-center py-4">
                             <p className="text-sm text-gray-500">Initializing payment gateway...</p>
-                         </div>
+                        </div>
                     )}
                 </section>
 
