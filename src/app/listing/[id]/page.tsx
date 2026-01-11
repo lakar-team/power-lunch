@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { useState } from 'react'
+import { supabase } from '@/lib/supabase/client'
 
 // Sample listing data - in production would come from Supabase
 const listingData = {
@@ -30,12 +32,14 @@ const listingData = {
 const timeSlots = ['10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM', '6:00 PM', '8:00 PM']
 
 export default function ListingPage({ params }: { params: { id: string } }) {
+    const router = useRouter()
     const { t } = useTranslation()
     const [selectedVenue, setSelectedVenue] = useState(listingData.venues[0].id)
     const [selectedDate, setSelectedDate] = useState<Date | null>(null)
     const [selectedTime, setSelectedTime] = useState<string | null>(null)
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [isFavorited, setIsFavorited] = useState(false)
+    const [bookingLoading, setBookingLoading] = useState(false)
 
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
     const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
@@ -79,6 +83,26 @@ export default function ListingPage({ params }: { params: { id: string } }) {
             navigator.clipboard.writeText(window.location.href)
             alert('Link copied!')
         }
+    }
+
+    const handleBook = async () => {
+        if (!selectedDate || !selectedTime) {
+            alert('Please select a date and time')
+            return
+        }
+
+        setBookingLoading(true)
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (!session) {
+            // Redirect to login with return URL
+            const returnUrl = encodeURIComponent(`/listing/${params.id}?date=${selectedDate.toISOString()}&time=${selectedTime}&venue=${selectedVenue}`)
+            router.push(`/auth/login?redirect=${returnUrl}`)
+            return
+        }
+
+        // Go to checkout if authenticated
+        router.push(`/checkout?listing=${params.id}&date=${selectedDate.toISOString()}&time=${selectedTime}&venue=${selectedVenue}`)
     }
 
     return (
@@ -177,8 +201,8 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                             <label
                                 key={venue.id}
                                 className={`flex items-center p-3 rounded-xl cursor-pointer transition ${selectedVenue === venue.id
-                                        ? 'bg-blue-50 border-2 border-blue-500'
-                                        : 'bg-gray-50 border-2 border-gray-200 hover:bg-gray-100'
+                                    ? 'bg-blue-50 border-2 border-blue-500'
+                                    : 'bg-gray-50 border-2 border-gray-200 hover:bg-gray-100'
                                     }`}
                             >
                                 <input
@@ -241,8 +265,8 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                                     key={i}
                                     onClick={() => !isPast && handleDayClick(day)}
                                     className={`py-2 rounded-lg cursor-pointer transition ${isPast ? 'text-gray-300 cursor-not-allowed' :
-                                            isSelected ? 'bg-black text-white font-bold' :
-                                                'hover:bg-blue-100 font-medium'
+                                        isSelected ? 'bg-black text-white font-bold' :
+                                            'hover:bg-blue-100 font-medium'
                                         }`}
                                 >
                                     {day}
@@ -261,8 +285,8 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                                         key={time}
                                         onClick={() => setSelectedTime(time)}
                                         className={`py-2 rounded-lg text-xs font-bold transition ${selectedTime === time
-                                                ? 'bg-black text-white border-black'
-                                                : 'bg-gray-50 border border-gray-200 hover:bg-black hover:text-white hover:border-black'
+                                            ? 'bg-black text-white border-black'
+                                            : 'bg-gray-50 border border-gray-200 hover:bg-black hover:text-white hover:border-black'
                                             }`}
                                     >
                                         {time}
@@ -288,12 +312,13 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                         <span className="text-xs text-gray-500 font-bold">Total</span>
                         <span className="text-lg font-black text-gray-900">¥{listingData.price.toLocaleString()}</span>
                     </div>
-                    <Link
-                        href={`/checkout?listing=${params.id}&date=${selectedDate?.toISOString()}&time=${selectedTime}&venue=${selectedVenue}`}
-                        className="pl-btn pl-btn-primary"
+                    <button
+                        onClick={handleBook}
+                        disabled={bookingLoading}
+                        className="pl-btn pl-btn-primary min-w-[140px]"
                     >
-                        Book Ticket
-                    </Link>
+                        {bookingLoading ? 'Checking...' : 'Book Ticket'}
+                    </button>
                 </div>
             </div>
         </div>
