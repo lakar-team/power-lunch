@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
             .from('hosts')
             .select('id')
             .eq('user_id', user.id)
-            .single<{ id: string }>()
+            .single() // Removed generic
 
         if (!host) {
             return NextResponse.json({ bookings: [] })
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       )
     `)
         .eq('id', body.listing_id)
-        .single<ListingWithHost>()
+        .single() // Removed generic
 
     if (listingError || !listing) {
         return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         .from('bookings' as any)
         .insert(bookingData as any)
         .select()
-        .single<{ id: string }>()
+        .single() // Removed generic
 
     if (bookingError || !booking) {
         return NextResponse.json({ error: bookingError?.message || 'Failed to create booking' }, { status: 500 })

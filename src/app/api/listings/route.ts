@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         .from('hosts')
         .select('id')
         .eq('user_id', user.id)
-        .single<{ id: string }>()
+        .single() // Removed generic to fix build error
 
     if (hostError || !host) {
         return NextResponse.json({ error: 'Host profile not found' }, { status: 404 })
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         .from('listings' as any)
         .insert(listingData as any)
         .select()
-        .single<{ id: string }>()
+        .single() // Removed generic to fix build error
 
     if (listingError || !listing) {
         return NextResponse.json({ error: listingError?.message || 'Failed to create listing' }, { status: 500 })

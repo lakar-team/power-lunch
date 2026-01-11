@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         .from('hosts')
         .select('id')
         .eq('user_id', user.id)
-        .single<{ id: string }>()
+        .single() // Removed generic
 
     if (!host) {
         return NextResponse.json({ error: 'Host profile not found' }, { status: 404 })
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         .eq('qr_code_hash', qrHash)
         .eq('host_id', hostId)
         .eq('status', 'confirmed')
-        .single<BookingWithDetails>()
+        .single() // Removed generic
 
     if (bookingError || !booking) {
         return NextResponse.json({
