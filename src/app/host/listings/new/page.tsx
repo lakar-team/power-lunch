@@ -6,15 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { supabase } from '@/lib/supabase/client'
 import { createListing } from '@/lib/api/listings'
-
-const categories = [
-    { id: 'english', label: 'English Conversation', icon: 'fa-language', color: 'bg-blue-100 text-blue-600' },
-    { id: 'tech', label: 'Tech & Programming', icon: 'fa-laptop-code', color: 'bg-purple-100 text-purple-600' },
-    { id: 'design', label: 'Design & Creative', icon: 'fa-compass-drafting', color: 'bg-orange-100 text-orange-600' },
-    { id: 'career', label: 'Career Advice', icon: 'fa-briefcase', color: 'bg-green-100 text-green-600' },
-    { id: 'business', label: 'Business & Startup', icon: 'fa-chart-line', color: 'bg-red-100 text-red-600' },
-    { id: 'language', label: 'Other Languages', icon: 'fa-globe', color: 'bg-teal-100 text-teal-600' },
-]
+import { categories, getCategoryById } from '@/lib/categories'
 
 const durations = [30, 45, 60, 90]
 
@@ -36,12 +28,16 @@ export default function NewListingPage() {
     // Form data
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
-    const [category, setCategory] = useState('')
+    const [mainCategory, setMainCategory] = useState('')
+    const [subcategory, setSubcategory] = useState('')
     const [price, setPrice] = useState(1500)
     const [duration, setDuration] = useState(60)
     const [venueType, setVenueType] = useState('host_choice')
     const [specificLocation, setSpecificLocation] = useState('')
     const [locationArea, setLocationArea] = useState('')
+
+    // Get selected category object
+    const selectedCategory = getCategoryById(mainCategory)
 
     useEffect(() => {
         async function checkHost() {
@@ -83,7 +79,7 @@ export default function NewListingPage() {
             const listingData = {
                 title,
                 description,
-                category,
+                category: subcategory ? `${mainCategory}:${subcategory}` : mainCategory,
                 price_yen: price,
                 duration_minutes: duration,
                 location_area: locationArea || 'Sendai, Japan',
@@ -165,26 +161,66 @@ export default function NewListingPage() {
                             <p className="text-gray-500">Choose a category that fits your expertise.</p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            {categories.map(cat => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setCategory(cat.id)}
-                                    className={`p-4 rounded-xl border-2 text-left transition ${category === cat.id
-                                            ? 'border-black bg-gray-50'
-                                            : 'border-gray-200 hover:border-gray-300'
-                                        }`}
-                                >
-                                    <div className={`w-10 h-10 ${cat.color} rounded-lg flex items-center justify-center mb-2`}>
-                                        <i className={`fa-solid ${cat.icon}`}></i>
-                                    </div>
-                                    <span className="font-bold text-sm">{cat.label}</span>
-                                    {category === cat.id && (
-                                        <i className="fa-solid fa-check ml-2 text-green-500"></i>
-                                    )}
-                                </button>
-                            ))}
+                        {/* Main Category Selection */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-3">
+                                Category
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {categories.map(cat => (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => {
+                                            setMainCategory(cat.id)
+                                            setSubcategory('') // Reset subcategory when changing main
+                                        }}
+                                        className={`p-3 rounded-xl border-2 text-left transition ${mainCategory === cat.id
+                                                ? 'border-black bg-gray-50'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                    >
+                                        <div className="flex items-center">
+                                            <div className={`w-10 h-10 ${cat.color} rounded-lg flex items-center justify-center mr-3`}>
+                                                <i className={`fa-solid ${cat.icon}`}></i>
+                                            </div>
+                                            <div className="flex-1">
+                                                <span className="font-bold text-sm block">{cat.label}</span>
+                                                <span className="text-xs text-gray-400">{cat.subcategories.length} topics</span>
+                                            </div>
+                                            {mainCategory === cat.id && (
+                                                <i className="fa-solid fa-check text-green-500"></i>
+                                            )}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
+
+                        {/* Subcategory Selection (shows when main category is selected) */}
+                        {selectedCategory && (
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-3">
+                                    Specific Topic <span className="font-normal text-gray-400">(optional but recommended)</span>
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {selectedCategory.subcategories.map(sub => (
+                                        <button
+                                            key={sub.id}
+                                            onClick={() => setSubcategory(subcategory === sub.id ? '' : sub.id)}
+                                            className={`px-3 py-2 rounded-full text-sm font-medium transition ${subcategory === sub.id
+                                                    ? 'bg-black text-white'
+                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                }`}
+                                        >
+                                            {sub.label}
+                                            {subcategory === sub.id && (
+                                                <i className="fa-solid fa-check ml-1.5 text-xs"></i>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -201,7 +237,7 @@ export default function NewListingPage() {
 
                         <button
                             onClick={() => setStep(2)}
-                            disabled={!category || title.length < 5}
+                            disabled={!mainCategory || title.length < 5}
                             className="w-full pl-btn pl-btn-primary disabled:opacity-50"
                         >
                             Continue <i className="fa-solid fa-arrow-right ml-2"></i>
@@ -286,8 +322,8 @@ export default function NewListingPage() {
                                         key={d}
                                         onClick={() => setDuration(d)}
                                         className={`py-3 rounded-xl font-bold transition ${duration === d
-                                                ? 'bg-black text-white'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            ? 'bg-black text-white'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                             }`}
                                     >
                                         {d}min
@@ -324,8 +360,8 @@ export default function NewListingPage() {
                                     key={venue.id}
                                     onClick={() => setVenueType(venue.id)}
                                     className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${venueType === venue.id
-                                            ? 'border-black bg-gray-50'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                        ? 'border-black bg-gray-50'
+                                        : 'border-gray-200 hover:border-gray-300'
                                         }`}
                                 >
                                     <div className={`w-12 h-12 ${venue.color} rounded-xl flex items-center justify-center mr-4`}>
