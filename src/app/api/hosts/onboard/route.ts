@@ -9,7 +9,11 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await authClient.auth.getUser()
 
     if (authError || !user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        console.error('[hosts/onboard] Auth error:', authError?.message || 'No user session')
+        return NextResponse.json({
+            error: 'Unauthorized',
+            details: authError?.message || 'No active session found. Please log in again.'
+        }, { status: 401 })
     }
 
     // Use admin client for database operations
