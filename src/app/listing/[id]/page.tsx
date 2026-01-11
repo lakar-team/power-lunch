@@ -3,38 +3,24 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-
-// Sample listing data - in production would come from Supabase
-const listingData = {
-    id: '1',
-    title: 'Design & English Power Lunch',
-    description: "Let's grab a coffee and talk about design, architecture, or just life in Sendai. I can help with English conversation or give feedback on your portfolio. Casual and friendly!",
-    price: 1500,
-    duration: 30,
-    categories: ['English', 'Design'],
-    rating: 4.9,
-    reviewCount: 12,
-    host: {
-        name: 'Adam',
-        title: 'Architect & PhD Student',
-        avatar: 'https://ui-avatars.com/api/?name=Adam+Raman&background=0D8ABC&color=fff'
-    },
-    area: 'Aoba-dori Area',
-    venues: [
-        { id: 'v1', name: 'Blue Leaf Cafe', type: 'Cafe', description: 'Quiet · 5 min walk from station', icon: 'fa-mug-hot', color: 'bg-blue-100 text-blue-600' },
-        { id: 'v2', name: 'Kotodai Park', type: 'Park', description: 'Bring Bento · Outdoor', icon: 'fa-tree', color: 'bg-green-100 text-green-600' },
-    ],
-    image: 'https://images.unsplash.com/photo-1543007630-9710e4a00a20?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
-}
+import { getListing } from '@/lib/api/listings'
+import { Listing } from '@/lib/types/supabase'
 
 const timeSlots = ['10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM', '6:00 PM', '8:00 PM']
 
 export default function ListingPage({ params }: { params: { id: string } }) {
     const router = useRouter()
     const { t } = useTranslation()
-    const [selectedVenue, setSelectedVenue] = useState(listingData.venues[0].id)
+
+    // Data state
+    const [listing, setListing] = useState<Listing | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    // UI state
+    const [selectedVenue, setSelectedVenue] = useState<string>('')
     const [selectedDate, setSelectedDate] = useState<Date | null>(null)
     const [selectedTime, setSelectedTime] = useState<string | null>(null)
     const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -43,6 +29,32 @@ export default function ListingPage({ params }: { params: { id: string } }) {
 
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
     const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+
+    // Fetch listing data
+    useEffect(() => {
+        async function fetchListing() {
+            setLoading(true)
+            const { listing: data, error: fetchError } = await getListing(params.id)
+
+            if (fetchError) {
+                setError(fetchError)
+                setLoading(false)
+                return
+            }
+
+            if (data) {
+                setListing(data)
+                // Set default venue if available
+                if (data.venue_options && data.venue_options.length > 0) {
+                    setSelectedVenue(data.venue_options[0].id)
+                }
+            }
+
+            setLoading(false)
+        }
+
+        fetchListing()
+    }, [params.id])
 
     // Generate calendar days
     const generateCalendarDays = () => {
@@ -105,6 +117,39 @@ export default function ListingPage({ params }: { params: { id: string } }) {
         router.push(`/checkout?listing=${params.id}&date=${selectedDate.toISOString()}&time=${selectedTime}&venue=${selectedVenue}`)
     }
 
+    // Loading state
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+                    <p className="text-gray-500">Loading listing...</p>
+                </div>
+            </div>
+        )
+    }
+
+    // Error state  
+    if (error || !listing) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i className="fa-solid fa-exclamation-triangle text-red-500 text-2xl"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Listing Not Found</h2>
+                    <p className="text-gray-600 mb-6">{error || 'This listing may have been removed or is no longer available.'}</p>
+                    <Link href="/search" className="pl-btn pl-btn-primary inline-block">
+                        Browse Other Sessions
+                    </Link>
+                </div>
+            </div>
+        )
+    }
+
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             {/* Header */}
@@ -133,12 +178,12 @@ export default function ListingPage({ params }: { params: { id: string } }) {
             {/* Hero Image */}
             <div className="relative w-full h-64 bg-gray-200">
                 <img
-                    src={listingData.image}
-                    alt={listingData.title}
+                    src={listing.cover_image_url || '/images/default-listing.jpg'}
+                    alt={listing.title}
                     className="w-full h-full object-cover"
                 />
                 <button className="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold shadow-sm hover:bg-white transition">
-                    <i className="fa-solid fa-star text-yellow-400"></i> {listingData.rating} ({listingData.reviewCount} reviews)
+                    <i className="fa-solid fa-star text-yellow-400"></i> {listing.host?.rating_avg?.toFixed(1) || '5.0'} ({listing.host?.total_sessions || 0} sessions)
                 </button>
             </div>
 
@@ -146,30 +191,28 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                 {/* Title & Host */}
                 <section className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                     <div className="flex justify-between items-start mb-3">
-                        <h1 className="text-xl font-black leading-tight text-gray-900">{listingData.title}</h1>
+                        <h1 className="text-xl font-black leading-tight text-gray-900">{listing.title}</h1>
                         <div className="flex flex-col items-end">
-                            <span className="text-xl font-bold">¥{listingData.price.toLocaleString()}</span>
-                            <span className="text-[10px] text-gray-400">per {listingData.duration} mins</span>
+                            <span className="text-xl font-bold">¥{listing.price_yen.toLocaleString()}</span>
+                            <span className="text-[10px] text-gray-400">per {listing.duration_minutes} mins</span>
                         </div>
                     </div>
 
                     <div className="flex items-center space-x-2 mb-4">
-                        {listingData.categories.map(cat => (
-                            <span key={cat} className={`text-[10px] font-bold px-2 py-0.5 rounded ${cat === 'English' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                                {cat}
-                            </span>
-                        ))}
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                            {listing.category}
+                        </span>
                     </div>
 
                     <div className="flex items-center border-t border-gray-100 pt-4">
                         <img
-                            src={listingData.host.avatar}
-                            alt={listingData.host.name}
+                            src={listing.host?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(listing.host?.profile?.full_name || 'Host')}&background=0D8ABC&color=fff`}
+                            alt={listing.host?.profile?.full_name || 'Host'}
                             className="w-10 h-10 rounded-full border-2 border-white shadow-sm mr-3"
                         />
                         <div>
-                            <h3 className="font-bold text-sm text-gray-900">Hosted by {listingData.host.name}</h3>
-                            <p className="text-xs text-gray-500">{listingData.host.title}</p>
+                            <h3 className="font-bold text-sm text-gray-900">Hosted by {listing.host?.profile?.full_name || 'Host'}</h3>
+                            <p className="text-xs text-gray-500">{listing.host?.bio || 'Power Lunch Host'}</p>
                         </div>
                         <button className="ml-auto text-blue-600 text-xs font-bold border border-blue-100 px-3 py-1.5 rounded-full hover:bg-blue-50">
                             View Profile
@@ -180,7 +223,7 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                 {/* Description */}
                 <section className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                     <h2 className="text-sm font-bold text-gray-900 mb-2">About this Lunch</h2>
-                    <p className="text-sm text-gray-600 leading-relaxed">{listingData.description}</p>
+                    <p className="text-sm text-gray-600 leading-relaxed">{listing.description || 'No description available.'}</p>
                 </section>
 
                 {/* Location */}
@@ -191,13 +234,13 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                             <i className="fa-solid fa-location-dot text-3xl text-gray-400"></i>
                         </div>
                         <div className="absolute bottom-2 right-2 bg-white px-2 py-1 rounded text-[10px] font-bold shadow">
-                            {listingData.area}
+                            {listing.location_area || 'Location TBD'}
                         </div>
                     </div>
 
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Select Meeting Venue</h3>
                     <div className="space-y-3">
-                        {listingData.venues.map(venue => (
+                        {listing.venue_options && listing.venue_options.length > 0 ? listing.venue_options.map(venue => (
                             <label
                                 key={venue.id}
                                 className={`flex items-center p-3 rounded-xl cursor-pointer transition ${selectedVenue === venue.id
@@ -221,7 +264,9 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                                     <div className="text-xs text-gray-500">{venue.type} · {venue.description}</div>
                                 </div>
                             </label>
-                        ))}
+                        )) : (
+                            <p className="text-sm text-gray-500">Venue to be determined with host</p>
+                        )}
                     </div>
                 </section>
 
@@ -310,7 +355,7 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                 <div className="max-w-md mx-auto flex items-center justify-between">
                     <div className="flex flex-col">
                         <span className="text-xs text-gray-500 font-bold">Total</span>
-                        <span className="text-lg font-black text-gray-900">¥{listingData.price.toLocaleString()}</span>
+                        <span className="text-lg font-black text-gray-900">¥{listing.price_yen.toLocaleString()}</span>
                     </div>
                     <button
                         onClick={handleBook}
