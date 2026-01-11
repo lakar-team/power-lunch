@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase/client'
 import { getBookings } from '@/lib/api/bookings'
 import { Booking } from '@/lib/types/supabase'
 
-export default function HostDashboardPage() {
+function DashboardContent() {
     const { t } = useTranslation()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -154,8 +154,8 @@ export default function HostDashboardPage() {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition ${activeTab === tab
-                                    ? 'bg-white shadow-sm text-black'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-white shadow-sm text-black'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -218,8 +218,8 @@ export default function HostDashboardPage() {
                                                 </div>
                                             </div>
                                             <span className={`px-2 py-1 rounded-full text-xs font-bold ${booking.status === 'confirmed'
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-yellow-100 text-yellow-700'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-yellow-100 text-yellow-700'
                                                 }`}>
                                                 {booking.status}
                                             </span>
@@ -255,9 +255,9 @@ export default function HostDashboardPage() {
                                             <div className="text-right">
                                                 <p className="font-bold">¥{(booking.listing?.price_yen || 0).toLocaleString()}</p>
                                                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                                                        booking.status === 'completed' ? 'bg-blue-100 text-blue-700' :
-                                                            booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                                                'bg-yellow-100 text-yellow-700'
+                                                    booking.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                                                        booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                                            'bg-yellow-100 text-yellow-700'
                                                     }`}>
                                                     {booking.status}
                                                 </span>
@@ -309,5 +309,13 @@ export default function HostDashboardPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function HostDashboardPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+            <DashboardContent />
+        </Suspense>
     )
 }

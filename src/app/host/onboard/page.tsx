@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
@@ -17,7 +17,7 @@ const topicOptions = [
     { id: 'language', label: 'Other Languages', icon: 'fa-globe', color: 'bg-teal-100 text-teal-600' },
 ]
 
-export default function HostOnboardPage() {
+function OnboardContent() {
     const { t } = useTranslation()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -187,8 +187,8 @@ export default function HostOnboardPage() {
                         key={topic.id}
                         onClick={() => handleTopicToggle(topic.id)}
                         className={`p-4 rounded-xl border-2 text-left transition ${selectedTopics.includes(topic.id)
-                                ? 'border-black bg-gray-50'
-                                : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-black bg-gray-50'
+                            : 'border-gray-200 hover:border-gray-300'
                             }`}
                     >
                         <div className={`w-10 h-10 ${topic.color} rounded-lg flex items-center justify-center mb-2`}>
@@ -333,5 +333,13 @@ export default function HostOnboardPage() {
                 {step === 'stripe' && renderStripe()}
             </main>
         </div>
+    )
+}
+
+export default function HostOnboardPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+            <OnboardContent />
+        </Suspense>
     )
 }
