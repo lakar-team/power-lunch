@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/client'
+import { createServerClient } from '@/lib/supabase/server'
 import { createPaymentIntent, calculateFees } from '@/lib/stripe'
 import crypto from 'crypto'
 
