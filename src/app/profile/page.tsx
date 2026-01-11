@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '@/lib/supabase/client'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 
 export default function ProfilePage() {
@@ -12,7 +12,6 @@ export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState<'guest' | 'host'>('guest')
     const [user, setUser] = useState<any>(null)
     const [loading, setLoading] = useState(true)
-    const supabase = createClientComponentClient()
 
     useEffect(() => {
         async function getUser() {
