@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/client'
+import { createServerClient, createAdminClient } from '@/lib/supabase/client'
 import { createConnectedAccount, createConnectOnboardingLink } from '@/lib/stripe'
 
 // POST /api/hosts/onboard - Start Stripe Connect onboarding
 export async function POST(request: NextRequest) {
-    const supabase = createServerClient()
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Use server client to verify user session from cookies
+    const authClient = createServerClient()
+    const { data: { user }, error: authError } = await authClient.auth.getUser()
 
     if (authError || !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Use admin client for database operations
+    const supabase = createAdminClient()
 
     // Check if user already has a host profile
     const { data: existingHost } = await supabase
@@ -64,14 +67,14 @@ export async function POST(request: NextRequest) {
 
 // GET /api/hosts/onboard - Check onboarding status
 export async function GET(request: NextRequest) {
-    const supabase = createServerClient()
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const authClient = createServerClient()
+    const { data: { user }, error: authError } = await authClient.auth.getUser()
 
     if (authError || !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const supabase = createAdminClient()
     const { data: host } = await supabase
         .from('hosts')
         .select('id, stripe_account_id, is_verified')
