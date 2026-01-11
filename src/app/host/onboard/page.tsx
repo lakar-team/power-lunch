@@ -77,6 +77,7 @@ function OnboardContent() {
             const response = await fetch('/api/hosts/onboard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Send auth cookies
                 body: JSON.stringify({ bio, topics: selectedTopics }),
             })
 
