@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { supabase } from '@/lib/supabase/client'
 import { getBookings } from '@/lib/api/bookings'
-import { Booking } from '@/lib/types/supabase'
+import { Booking, HostLocation } from '@/lib/types/supabase'
 
 function DashboardContent() {
     const { t } = useTranslation()
@@ -16,9 +16,10 @@ function DashboardContent() {
     const [user, setUser] = useState<any>(null)
     const [host, setHost] = useState<any>(null)
     const [listings, setListings] = useState<any[]>([])
+    const [locations, setLocations] = useState<HostLocation[]>([])
     const [bookings, setBookings] = useState<Booking[]>([])
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'listings'>('overview')
+    const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'locations'>('overview')
 
     // Check if onboarding just completed
     const onboardingComplete = searchParams.get('onboarding') === 'complete'
@@ -55,6 +56,13 @@ function DashboardContent() {
                 .order('created_at', { ascending: false })
 
             setListings(listingsData || [])
+
+            // Load host's location pins
+            const locationsRes = await fetch(`/api/host-locations?host_id=${hostData.id}`)
+            if (locationsRes.ok) {
+                const locationsData = await locationsRes.json()
+                setLocations(locationsData || [])
+            }
 
             // Load host's bookings
             const { bookings: bookingsData } = await getBookings({ role: 'host' })
@@ -114,11 +122,11 @@ function DashboardContent() {
                             <p className="text-gray-500">Welcome back, {host?.profile?.full_name || 'Host'}</p>
                         </div>
                         <Link
-                            href="/host/listings/new"
+                            href="/host/locations/new"
                             className="pl-btn pl-btn-primary"
                         >
-                            <i className="fa-solid fa-plus mr-2"></i>
-                            New Listing
+                            <i className="fa-solid fa-location-dot mr-2"></i>
+                            Add Location
                         </Link>
                     </div>
                 </div>
@@ -136,8 +144,8 @@ function DashboardContent() {
                         <p className="text-2xl font-black">{upcomingBookings.length}</p>
                     </div>
                     <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Active Listings</p>
-                        <p className="text-2xl font-black">{listings.filter(l => l.is_active).length}</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Locations</p>
+                        <p className="text-2xl font-black">{locations.filter(l => l.is_active).length}</p>
                     </div>
                     <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                         <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Rating</p>
@@ -149,7 +157,7 @@ function DashboardContent() {
 
                 {/* Tabs */}
                 <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl mb-6">
-                    {(['overview', 'bookings', 'listings'] as const).map(tab => (
+                    {(['overview', 'bookings', 'locations'] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -170,9 +178,9 @@ function DashboardContent() {
                         <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
                             <h3 className="font-bold mb-4">Quick Actions</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <Link href="/host/listings/new" className="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition">
-                                    <i className="fa-solid fa-plus text-2xl text-blue-500 mb-2"></i>
-                                    <p className="text-sm font-bold">New Listing</p>
+                                <Link href="/host/locations/new" className="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition">
+                                    <i className="fa-solid fa-location-dot text-2xl text-blue-500 mb-2"></i>
+                                    <p className="text-sm font-bold">Add Location</p>
                                 </Link>
                                 <button className="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition">
                                     <i className="fa-solid fa-calendar text-2xl text-green-500 mb-2"></i>
@@ -270,38 +278,74 @@ function DashboardContent() {
                     </div>
                 )}
 
-                {activeTab === 'listings' && (
+                {activeTab === 'locations' && (
                     <div className="space-y-4">
-                        {listings.length === 0 ? (
+                        {/* Add Location Button */}
+                        <div className="flex justify-end">
+                            <Link href="/host/locations/new" className="pl-btn pl-btn-primary">
+                                <i className="fa-solid fa-plus mr-2"></i>
+                                Add Location
+                            </Link>
+                        </div>
+
+                        {locations.length === 0 ? (
                             <div className="bg-white rounded-xl border border-gray-100 shadow-sm text-center py-12">
-                                <i className="fa-solid fa-store text-5xl text-gray-300 mb-4"></i>
-                                <p className="font-bold mb-2">No listings yet</p>
-                                <p className="text-sm text-gray-500 mb-6">Create your first listing to start hosting</p>
-                                <Link href="/host/listings/new" className="pl-btn pl-btn-primary">
+                                <i className="fa-solid fa-location-dot text-5xl text-gray-300 mb-4"></i>
+                                <p className="font-bold mb-2">No location pins yet</p>
+                                <p className="text-sm text-gray-500 mb-6">Add your first location to start hosting</p>
+                                <Link href="/host/locations/new" className="pl-btn pl-btn-primary">
                                     <i className="fa-solid fa-plus mr-2"></i>
-                                    Create Listing
+                                    Add Location
                                 </Link>
                             </div>
                         ) : (
-                            listings.map(listing => (
-                                <div key={listing.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center justify-between">
-                                    <div className="flex items-center">
-                                        <img
-                                            src={listing.cover_image_url || 'https://via.placeholder.com/80'}
-                                            className="w-16 h-16 rounded-lg object-cover mr-4"
-                                            alt={listing.title}
-                                        />
-                                        <div>
-                                            <p className="font-bold">{listing.title}</p>
-                                            <p className="text-sm text-gray-500">¥{listing.price_yen?.toLocaleString()} • {listing.duration_minutes}min</p>
-                                            <span className={`text-xs font-bold ${listing.is_active ? 'text-green-600' : 'text-gray-400'}`}>
-                                                {listing.is_active ? '● Active' : '○ Inactive'}
-                                            </span>
+                            locations.map(location => (
+                                <div key={location.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-start">
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-4 ${location.session_type === 'online' ? 'bg-blue-100 text-blue-600' :
+                                                location.session_type === 'both' ? 'bg-purple-100 text-purple-600' :
+                                                    'bg-green-100 text-green-600'
+                                                }`}>
+                                                <i className={`fa-solid ${location.session_type === 'online' ? 'fa-video' :
+                                                    location.session_type === 'both' ? 'fa-people-arrows' :
+                                                        'fa-utensils'
+                                                    } text-xl`}></i>
+                                            </div>
+                                            <div>
+                                                <p className="font-bold">{location.name}</p>
+                                                <p className="text-sm text-gray-500">{location.location_area}</p>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                                                        ¥{location.price_yen.toLocaleString()}
+                                                    </span>
+                                                    <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                                                        {location.duration_minutes}min
+                                                    </span>
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${location.session_type === 'online' ? 'bg-blue-100 text-blue-700' :
+                                                        location.session_type === 'both' ? 'bg-purple-100 text-purple-700' :
+                                                            'bg-green-100 text-green-700'
+                                                        }`}>
+                                                        {location.session_type === 'online' ? 'Online' :
+                                                            location.session_type === 'both' ? 'Online + In-Person' :
+                                                                'In-Person'}
+                                                    </span>
+                                                </div>
+                                                {location.date_start && (
+                                                    <p className="text-xs text-orange-600 mt-2">
+                                                        <i className="fa-solid fa-plane mr-1"></i>
+                                                        {location.date_start} to {location.date_end || 'ongoing'}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`w-2 h-2 rounded-full ${location.is_active ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                                            <button className="text-gray-400 hover:text-gray-600 p-2">
+                                                <i className="fa-solid fa-ellipsis-vertical"></i>
+                                            </button>
                                         </div>
                                     </div>
-                                    <button className="text-gray-400 hover:text-gray-600">
-                                        <i className="fa-solid fa-ellipsis-vertical text-xl"></i>
-                                    </button>
                                 </div>
                             ))
                         )}
