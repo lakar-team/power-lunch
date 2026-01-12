@@ -191,7 +191,7 @@ export default function SettingsPage() {
                             <i className="fa-solid fa-chevron-right text-gray-300"></i>
                         </Link>
 
-                        <a href="mailto:support@powerlunch.app" className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition">
+                        <a href="mailto:lakar.team@gmail.com" className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition">
                             <div className="flex items-center">
                                 <i className="fa-solid fa-headset text-gray-500 mr-3"></i>
                                 <span className="font-medium">Contact Support</span>

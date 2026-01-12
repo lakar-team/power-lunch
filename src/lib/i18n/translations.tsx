@@ -80,9 +80,20 @@ const translations = {
 
         // Host Onboard
         'host.onboard.title': 'Become a Host',
-        'host.onboard.subtitle': 'Share your skills and earn money during lunch',
-        'host.onboard.btn': 'Start Onboarding',
+        'host.onboard.subtitle': 'Share your knowledge, earn money, and connect with amazing people over lunch. It only takes a few minutes to get started.',
+        'host.onboard.btn': 'Get Started',
         'host.onboard.loading': 'Setting up...',
+        'host.onboard.createProfile': 'Create Profile',
+        'host.onboard.createProfileDesc': 'Tell us about yourself and your expertise',
+        'host.onboard.setUpPayments': 'Set Up Payments',
+        'host.onboard.setUpPaymentsDesc': 'Connect Stripe to receive earnings',
+        'host.onboard.startHosting': 'Start Hosting',
+        'host.onboard.startHostingDesc': 'Create listings and meet guests',
+        'host.onboard.aboutYou': 'About You',
+        'host.onboard.aboutYouDesc': 'Tell potential guests what makes you a great lunch companion.',
+        'host.onboard.yourBio': 'Your Bio',
+        'host.onboard.expertise': 'Your Expertise',
+        'host.onboard.expertiseDesc': 'Choose categories that match your skills.',
 
         // Profile Page
         'profile.hosting': 'Hosting',
@@ -181,9 +192,20 @@ const translations = {
 
         // Host Onboard
         'host.onboard.title': 'ホストになる',
-        'host.onboard.subtitle': 'スキルを共有して、ランチタイムに収入を得よう',
-        'host.onboard.btn': '登録を開始',
+        'host.onboard.subtitle': 'ランチタイムを活用して、知識を共有し、収入を得ながら素敵な人々と出会おう。開始まで数分です。',
+        'host.onboard.btn': '始める',
         'host.onboard.loading': '準備中...',
+        'host.onboard.createProfile': 'プロフィール作成',
+        'host.onboard.createProfileDesc': '自己紹介と専門分野を教えてください',
+        'host.onboard.setUpPayments': '支払い設定',
+        'host.onboard.setUpPaymentsDesc': 'Stripeを連携して収益を受け取る',
+        'host.onboard.startHosting': 'ホスト開始',
+        'host.onboard.startHostingDesc': 'リスティングを作成してゲストと出会う',
+        'host.onboard.aboutYou': 'あなたについて',
+        'host.onboard.aboutYouDesc': 'ゲストに素敵なランチパートナーであることを伝えましょう。',
+        'host.onboard.yourBio': '自己紹介',
+        'host.onboard.expertise': '専門分野',
+        'host.onboard.expertiseDesc': 'あなたのスキルに合ったカテゴリを選択してください。',
 
         // Profile Page
         'profile.hosting': 'ホスティング',

@@ -23,6 +23,7 @@ export default function SearchPage() {
     const mapInstanceRef = useRef<any>(null)
     const markersRef = useRef<any[]>([])
     const [activeFilter, setActiveFilter] = useState('all')
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [showFilterModal, setShowFilterModal] = useState(false)
     const [mapLoaded, setMapLoaded] = useState(false)
     const [listings, setListings] = useState<Listing[]>([])
@@ -255,12 +256,19 @@ export default function SearchPage() {
                         <div className="mb-6">
                             <label className="text-sm font-bold text-gray-700 mb-3 block">Category</label>
                             <div className="flex flex-wrap gap-2">
-                                <button className="bg-black text-white px-4 py-2 rounded-full text-sm font-bold">
+                                <button
+                                    onClick={() => setSelectedCategory(null)}
+                                    className={`px-4 py-2 rounded-full text-sm font-bold transition ${selectedCategory === null ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                >
                                     All
                                 </button>
                                 {categories.map(cat => (
-                                    <button key={cat.id} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-bold hover:bg-black hover:text-white transition">
-                                        <i className={`fa-solid ${cat.icon} mr-1.5 ${cat.color.split(' ')[1]}`}></i>
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setSelectedCategory(cat.id)}
+                                        className={`px-4 py-2 rounded-full text-sm font-bold transition ${selectedCategory === cat.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                    >
+                                        <i className={`fa-solid ${cat.icon} mr-1.5 ${selectedCategory === cat.id ? '' : cat.color.split(' ')[1]}`}></i>
                                         {cat.label.split(' & ')[0]}
                                     </button>
                                 ))}

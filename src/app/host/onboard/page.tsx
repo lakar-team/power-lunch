@@ -97,10 +97,9 @@ function OnboardContent() {
             <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
                 <i className="fa-solid fa-handshake text-white text-4xl"></i>
             </div>
-            <h1 className="text-3xl font-black mb-4">Become a Host</h1>
+            <h1 className="text-3xl font-black mb-4">{t('host.onboard.title')}</h1>
             <p className="text-gray-600 mb-8 leading-relaxed">
-                Share your knowledge, earn money, and connect with amazing people over lunch.
-                It only takes a few minutes to get started.
+                {t('host.onboard.subtitle')}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-left">
@@ -108,22 +107,22 @@ function OnboardContent() {
                     <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
                         <i className="fa-solid fa-user-pen text-blue-600"></i>
                     </div>
-                    <h3 className="font-bold mb-1">Create Profile</h3>
-                    <p className="text-sm text-gray-500">Tell us about yourself and your expertise</p>
+                    <h3 className="font-bold mb-1">{t('host.onboard.createProfile')}</h3>
+                    <p className="text-sm text-gray-500">{t('host.onboard.createProfileDesc')}</p>
                 </div>
                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                     <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mb-3">
                         <i className="fa-solid fa-wallet text-purple-600"></i>
                     </div>
-                    <h3 className="font-bold mb-1">Set Up Payments</h3>
-                    <p className="text-sm text-gray-500">Connect Stripe to receive earnings</p>
+                    <h3 className="font-bold mb-1">{t('host.onboard.setUpPayments')}</h3>
+                    <p className="text-sm text-gray-500">{t('host.onboard.setUpPaymentsDesc')}</p>
                 </div>
                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-3">
                         <i className="fa-solid fa-utensils text-green-600"></i>
                     </div>
-                    <h3 className="font-bold mb-1">Start Hosting</h3>
-                    <p className="text-sm text-gray-500">Create listings and meet guests</p>
+                    <h3 className="font-bold mb-1">{t('host.onboard.startHosting')}</h3>
+                    <p className="text-sm text-gray-500">{t('host.onboard.startHostingDesc')}</p>
                 </div>
             </div>
 
@@ -131,20 +130,20 @@ function OnboardContent() {
                 onClick={() => setStep('profile')}
                 className="pl-btn pl-btn-primary text-lg px-12"
             >
-                Get Started <i className="fa-solid fa-arrow-right ml-2"></i>
+                {t('host.onboard.btn')} <i className="fa-solid fa-arrow-right ml-2"></i>
             </button>
         </div>
     )
 
     const renderProfile = () => (
         <div className="max-w-lg mx-auto">
-            <h2 className="text-2xl font-black mb-2">About You</h2>
-            <p className="text-gray-500 mb-6">Tell potential guests what makes you a great lunch companion.</p>
+            <h2 className="text-2xl font-black mb-2">{t('host.onboard.aboutYou')}</h2>
+            <p className="text-gray-500 mb-6">{t('host.onboard.aboutYouDesc')}</p>
 
             <div className="space-y-6">
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Your Bio
+                        {t('host.onboard.yourBio')}
                     </label>
                     <textarea
                         value={bio}
