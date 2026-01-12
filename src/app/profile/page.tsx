@@ -74,7 +74,7 @@ export default function ProfilePage() {
                     <Link href="/" className="pl-logo">POWER<span>LUNCH</span>.</Link>
                     <div className="flex items-center space-x-3">
                         <LanguageToggle />
-                        <button onClick={() => alert(t('profile.settingsSoon'))} className="text-gray-400 hover:text-black">
+                        <button onClick={() => router.push('/settings')} className="text-gray-400 hover:text-black">
                             <i className="fa-solid fa-gear text-xl"></i>
                         </button>
                     </div>
