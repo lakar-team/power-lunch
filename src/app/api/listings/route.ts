@@ -16,21 +16,25 @@ export async function GET(request: NextRequest) {
     let query = supabase
         .from('listings')
         .select(`
-      *,
+      id,
+      title,
+      category,
+      price_yen,
+      duration_minutes,
+      location_lat,
+      location_lng,
+      location_area,
+      session_type,
       host:hosts (
         id,
-        bio,
         topics,
         rating_avg,
-        total_sessions,
         is_verified,
         profile:profiles (
-          id,
           full_name,
           avatar_url
         )
-      ),
-      availability_slots (*)
+      )
     `)
         .eq('is_active', true)
 

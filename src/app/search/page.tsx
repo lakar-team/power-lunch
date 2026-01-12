@@ -56,8 +56,13 @@ export default function SearchPage() {
         }
     }, [])
 
-    // Fetch host locations
+    // Fetch host locations (cached - only fetch once)
+    const [hasFetched, setHasFetched] = useState(false)
+
     useEffect(() => {
+        // Skip if already fetched (prevents refetch on filter changes)
+        if (hasFetched) return
+
         async function fetchLocations() {
             setLoading(true)
             try {
@@ -70,9 +75,10 @@ export default function SearchPage() {
                 console.error('Failed to fetch locations:', err)
             }
             setLoading(false)
+            setHasFetched(true)
         }
         fetchLocations()
-    }, [])
+    }, [hasFetched])
 
     // Initialize map
     useEffect(() => {
@@ -301,12 +307,12 @@ export default function SearchPage() {
                                         <div className="flex items-start justify-between">
                                             <div className="flex items-center">
                                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-3 ${location.session_type === 'online' ? 'bg-blue-100 text-blue-600' :
-                                                        location.session_type === 'both' ? 'bg-purple-100 text-purple-600' :
-                                                            'bg-green-100 text-green-600'
+                                                    location.session_type === 'both' ? 'bg-purple-100 text-purple-600' :
+                                                        'bg-green-100 text-green-600'
                                                     }`}>
                                                     <i className={`fa-solid ${location.session_type === 'online' ? 'fa-video' :
-                                                            location.session_type === 'both' ? 'fa-people-arrows' :
-                                                                'fa-utensils'
+                                                        location.session_type === 'both' ? 'fa-people-arrows' :
+                                                            'fa-utensils'
                                                         } text-xl`}></i>
                                                 </div>
                                                 <div>
