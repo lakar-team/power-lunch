@@ -176,67 +176,103 @@ function OnboardContent() {
 
     const renderTopics = () => (
         <div className="max-w-lg mx-auto">
-            <h2 className="text-2xl font-black mb-2">Your Expertise</h2>
-            <p className="text-gray-500 mb-6">Select a category and pick topics you'd like to discuss with guests.</p>
+            <h2 className="text-2xl font-black mb-2">Your Topics</h2>
+            <p className="text-gray-500 mb-2">Select up to 6 topics you'd like to discuss with guests.</p>
+            <p className="text-sm font-bold text-gray-700 mb-6">
+                <span className={selectedTopics.length >= 6 ? 'text-red-500' : 'text-green-600'}>
+                    {selectedTopics.length}/6 selected
+                </span>
+            </p>
 
-            {/* Main Category Selection */}
-            <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-3">
-                    Category
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                    {categories.map(cat => (
-                        <button
-                            key={cat.id}
-                            onClick={() => {
-                                setSelectedCategory(cat.id)
-                                // Clear topics when changing category
-                                setSelectedTopics([])
-                            }}
-                            className={`p-3 rounded-xl border-2 text-left transition ${selectedCategory === cat.id
-                                ? 'border-black bg-gray-50'
-                                : 'border-gray-200 hover:border-gray-300'
-                                }`}
-                        >
-                            <div className="flex items-center">
-                                <div className={`w-10 h-10 ${cat.color} rounded-lg flex items-center justify-center mr-3`}>
-                                    <i className={`fa-solid ${cat.icon}`}></i>
+            {/* All Categories with Expandable Subcategories */}
+            <div className="space-y-4 mb-8">
+                {categories.map(cat => {
+                    const isExpanded = selectedCategory === cat.id
+                    const categoryTopicCount = cat.subcategories.filter(sub =>
+                        selectedTopics.includes(`${cat.id}:${sub.id}`)
+                    ).length
+
+                    return (
+                        <div key={cat.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                            <button
+                                onClick={() => setSelectedCategory(isExpanded ? null : cat.id)}
+                                className="w-full p-4 flex items-center justify-between bg-white hover:bg-gray-50 transition"
+                            >
+                                <div className="flex items-center">
+                                    <div className={`w-10 h-10 ${cat.color} rounded-lg flex items-center justify-center mr-3`}>
+                                        <i className={`fa-solid ${cat.icon}`}></i>
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="font-bold text-sm block">{cat.label}</span>
+                                        <span className="text-xs text-gray-400">{cat.subcategories.length} topics</span>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <span className="font-bold text-sm block">{cat.label}</span>
-                                    <span className="text-xs text-gray-400">{cat.subcategories.length} topics</span>
+                                <div className="flex items-center">
+                                    {categoryTopicCount > 0 && (
+                                        <span className="bg-black text-white text-xs font-bold px-2 py-1 rounded-full mr-2">
+                                            {categoryTopicCount}
+                                        </span>
+                                    )}
+                                    <i className={`fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-gray-400`}></i>
                                 </div>
-                                {selectedCategory === cat.id && (
-                                    <i className="fa-solid fa-check text-green-500"></i>
-                                )}
-                            </div>
-                        </button>
-                    ))}
-                </div>
+                            </button>
+
+                            {isExpanded && (
+                                <div className="p-4 bg-gray-50 border-t border-gray-200">
+                                    <div className="flex flex-wrap gap-2">
+                                        {cat.subcategories.map(sub => {
+                                            const topicKey = `${cat.id}:${sub.id}`
+                                            const isSelected = selectedTopics.includes(topicKey)
+                                            const canSelect = selectedTopics.length < 6 || isSelected
+
+                                            return (
+                                                <button
+                                                    key={sub.id}
+                                                    onClick={() => canSelect && handleTopicToggle(topicKey)}
+                                                    disabled={!canSelect}
+                                                    className={`px-3 py-2 rounded-full text-sm font-medium transition ${isSelected
+                                                            ? 'bg-black text-white'
+                                                            : canSelect
+                                                                ? 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-200'
+                                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                        }`}
+                                                >
+                                                    {sub.label}
+                                                    {isSelected && (
+                                                        <i className="fa-solid fa-check ml-1.5 text-xs"></i>
+                                                    )}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )
+                })}
             </div>
 
-            {/* Subcategory Selection (shows when main category is selected) */}
-            {activeCategory && (
-                <div className="mb-8">
-                    <label className="block text-sm font-bold text-gray-700 mb-3">
-                        Select Topics in {activeCategory.label}
-                    </label>
+            {/* Selected Topics Summary */}
+            {selectedTopics.length > 0 && (
+                <div className="mb-6 p-4 bg-green-50 rounded-xl">
+                    <p className="text-sm font-bold text-green-800 mb-2">Your selected topics:</p>
                     <div className="flex flex-wrap gap-2">
-                        {activeCategory.subcategories.map(sub => (
-                            <button
-                                key={sub.id}
-                                onClick={() => handleTopicToggle(sub.id)}
-                                className={`px-3 py-2 rounded-full text-sm font-medium transition ${selectedTopics.includes(sub.id)
-                                    ? 'bg-black text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                            >
-                                {sub.label}
-                                {selectedTopics.includes(sub.id) && (
-                                    <i className="fa-solid fa-check ml-1.5 text-xs"></i>
-                                )}
-                            </button>
-                        ))}
+                        {selectedTopics.map(topicKey => {
+                            const [catId, subId] = topicKey.split(':')
+                            const cat = getCategoryById(catId)
+                            const sub = cat?.subcategories.find(s => s.id === subId)
+                            return (
+                                <span key={topicKey} className="bg-white text-green-800 px-2 py-1 rounded-full text-xs font-medium border border-green-200">
+                                    {sub?.label || topicKey}
+                                    <button
+                                        onClick={() => handleTopicToggle(topicKey)}
+                                        className="ml-1 text-green-600 hover:text-red-500"
+                                    >
+                                        <i className="fa-solid fa-times"></i>
+                                    </button>
+                                </span>
+                            )
+                        })}
                     </div>
                 </div>
             )}

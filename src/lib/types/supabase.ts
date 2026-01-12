@@ -19,10 +19,12 @@ export interface Host {
 
 export interface AvailabilitySlot {
     id: string
-    listing_id: string
-    day_of_week: number
+    host_location_id: string
+    day_of_week: number | null
+    specific_date: string | null
     start_time: string
     end_time: string
+    is_recurring: boolean
 }
 
 export interface VenueOption {
@@ -32,6 +34,27 @@ export interface VenueOption {
     description: string
     icon: string
     color: string
+}
+
+export interface HostLocation {
+    id: string
+    host_id: string
+    name: string
+    location_area: string | null
+    location_lat: number | null
+    location_lng: number | null
+    session_type: 'in_person' | 'online' | 'both'
+    meet_link: string | null
+    venue_options: VenueOption[]
+    price_yen: number
+    duration_minutes: number
+    is_active: boolean
+    date_start: string | null
+    date_end: string | null
+    created_at: string
+    updated_at: string
+    availability_slots?: AvailabilitySlot[]
+    host?: Host
 }
 
 export interface Listing {
