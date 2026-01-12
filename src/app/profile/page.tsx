@@ -90,8 +90,8 @@ export default function ProfilePage() {
                     <div className="ml-4">
                         <h2 className="text-lg font-bold">{user.user_metadata?.full_name || 'User'}</h2>
                         <p className="text-xs text-gray-500">{user.email}</p>
-                        <div className="flex items-center mt-1 text-xs text-yellow-500 font-bold">
-                            <i className="fa-solid fa-star mr-1"></i> 5.0 <span className="text-gray-300 mx-1">•</span> <span className="text-gray-400 font-normal">New Member</span>
+                        <div className="flex items-center mt-1 text-xs">
+                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold"><i className="fa-solid fa-seedling mr-1"></i>New Member</span>
                         </div>
                     </div>
                 </div>
@@ -158,8 +158,8 @@ export default function ProfilePage() {
                                                             {formatDate(booking.booking_date)}
                                                         </span>
                                                         <span className={`text-[8px] font-bold px-2 py-0.5 rounded ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                                                                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                                    'bg-gray-100 text-gray-700'
+                                                            booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                                'bg-gray-100 text-gray-700'
                                                             }`}>
                                                             {booking.status.toUpperCase()}
                                                         </span>

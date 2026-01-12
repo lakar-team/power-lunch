@@ -5,17 +5,9 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { supabase } from '@/lib/supabase/client'
+import { categories, getCategoryById, Subcategory } from '@/lib/categories'
 
 type Step = 'intro' | 'profile' | 'topics' | 'stripe'
-
-const topicOptions = [
-    { id: 'english', label: 'English Conversation', icon: 'fa-language', color: 'bg-blue-100 text-blue-600' },
-    { id: 'tech', label: 'Tech & Programming', icon: 'fa-laptop-code', color: 'bg-purple-100 text-purple-600' },
-    { id: 'design', label: 'Design & Creative', icon: 'fa-compass-drafting', color: 'bg-orange-100 text-orange-600' },
-    { id: 'career', label: 'Career Advice', icon: 'fa-briefcase', color: 'bg-green-100 text-green-600' },
-    { id: 'business', label: 'Business & Startup', icon: 'fa-chart-line', color: 'bg-red-100 text-red-600' },
-    { id: 'language', label: 'Other Languages', icon: 'fa-globe', color: 'bg-teal-100 text-teal-600' },
-]
 
 function OnboardContent() {
     const { t } = useTranslation()
@@ -29,8 +21,12 @@ function OnboardContent() {
 
     // Profile data
     const [bio, setBio] = useState('')
-    const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [selectedTopics, setSelectedTopics] = useState<string[]>([]) // Now stores subcategory IDs
     const [termsAccepted, setTermsAccepted] = useState(false)
+
+    // Get selected category object for subcategory display
+    const activeCategory = selectedCategory ? getCategoryById(selectedCategory) : null
 
     // Check auth and refresh param
     useEffect(() => {
@@ -181,28 +177,69 @@ function OnboardContent() {
     const renderTopics = () => (
         <div className="max-w-lg mx-auto">
             <h2 className="text-2xl font-black mb-2">Your Expertise</h2>
-            <p className="text-gray-500 mb-6">Select the topics you'd like to discuss with guests.</p>
+            <p className="text-gray-500 mb-6">Select a category and pick topics you'd like to discuss with guests.</p>
 
-            <div className="grid grid-cols-2 gap-3 mb-8">
-                {topicOptions.map(topic => (
-                    <button
-                        key={topic.id}
-                        onClick={() => handleTopicToggle(topic.id)}
-                        className={`p-4 rounded-xl border-2 text-left transition ${selectedTopics.includes(topic.id)
-                            ? 'border-black bg-gray-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                    >
-                        <div className={`w-10 h-10 ${topic.color} rounded-lg flex items-center justify-center mb-2`}>
-                            <i className={`fa-solid ${topic.icon}`}></i>
-                        </div>
-                        <span className="font-bold text-sm">{topic.label}</span>
-                        {selectedTopics.includes(topic.id) && (
-                            <i className="fa-solid fa-check ml-2 text-green-500"></i>
-                        )}
-                    </button>
-                ))}
+            {/* Main Category Selection */}
+            <div className="mb-6">
+                <label className="block text-sm font-bold text-gray-700 mb-3">
+                    Category
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                    {categories.map(cat => (
+                        <button
+                            key={cat.id}
+                            onClick={() => {
+                                setSelectedCategory(cat.id)
+                                // Clear topics when changing category
+                                setSelectedTopics([])
+                            }}
+                            className={`p-3 rounded-xl border-2 text-left transition ${selectedCategory === cat.id
+                                    ? 'border-black bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                        >
+                            <div className="flex items-center">
+                                <div className={`w-10 h-10 ${cat.color} rounded-lg flex items-center justify-center mr-3`}>
+                                    <i className={`fa-solid ${cat.icon}`}></i>
+                                </div>
+                                <div className="flex-1">
+                                    <span className="font-bold text-sm block">{cat.label}</span>
+                                    <span className="text-xs text-gray-400">{cat.subcategories.length} topics</span>
+                                </div>
+                                {selectedCategory === cat.id && (
+                                    <i className="fa-solid fa-check text-green-500"></i>
+                                )}
+                            </div>
+                        </button>
+                    ))}
+                </div>
             </div>
+
+            {/* Subcategory Selection (shows when main category is selected) */}
+            {activeCategory && (
+                <div className="mb-8">
+                    <label className="block text-sm font-bold text-gray-700 mb-3">
+                        Select Topics in {activeCategory.label}
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                        {activeCategory.subcategories.map(sub => (
+                            <button
+                                key={sub.id}
+                                onClick={() => handleTopicToggle(sub.id)}
+                                className={`px-3 py-2 rounded-full text-sm font-medium transition ${selectedTopics.includes(sub.id)
+                                        ? 'bg-black text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                            >
+                                {sub.label}
+                                {selectedTopics.includes(sub.id) && (
+                                    <i className="fa-solid fa-check ml-1.5 text-xs"></i>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="flex justify-between">
                 <button

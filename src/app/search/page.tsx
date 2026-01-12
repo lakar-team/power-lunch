@@ -221,9 +221,9 @@ export default function SearchPage() {
 
             {/* Filter Modal */}
             {showFilterModal && (
-                <div className="fixed inset-0 z-50">
+                <div className="fixed inset-0 z-[60]">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setShowFilterModal(false)}></div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto">
+                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 pb-24 max-h-[70vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-black">Filters</h2>
                             <button onClick={() => setShowFilterModal(false)} className="text-gray-400 hover:text-black">
