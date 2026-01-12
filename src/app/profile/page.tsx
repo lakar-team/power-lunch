@@ -74,7 +74,7 @@ export default function ProfilePage() {
                     <Link href="/" className="pl-logo">POWER<span>LUNCH</span>.</Link>
                     <div className="flex items-center space-x-3">
                         <LanguageToggle />
-                        <button onClick={() => alert('Settings coming soon!')} className="text-gray-400 hover:text-black">
+                        <button onClick={() => alert(t('profile.settingsSoon'))} className="text-gray-400 hover:text-black">
                             <i className="fa-solid fa-gear text-xl"></i>
                         </button>
                     </div>
@@ -91,7 +91,7 @@ export default function ProfilePage() {
                         <h2 className="text-lg font-bold">{user.user_metadata?.full_name || 'User'}</h2>
                         <p className="text-xs text-gray-500">{user.email}</p>
                         <div className="flex items-center mt-1 text-xs">
-                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold"><i className="fa-solid fa-seedling mr-1"></i>New Member</span>
+                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold"><i className="fa-solid fa-seedling mr-1"></i>{t('profile.newMember')}</span>
                         </div>
                     </div>
                 </div>
@@ -110,13 +110,13 @@ export default function ProfilePage() {
                         onClick={() => setActiveTab('host')}
                         className={`py-3 text-sm font-bold transition-colors ${activeTab === 'host' ? 'border-b-2 border-black text-black' : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                        Hosting
+                        {t('profile.hosting')}
                     </button>
                     <button
                         onClick={() => router.push('/wallet')}
                         className="py-3 text-sm font-bold text-gray-400 hover:text-gray-600"
                     >
-                        Wallet
+                        {t('profile.wallet')}
                     </button>
                 </div>
             </div>
@@ -127,7 +127,7 @@ export default function ProfilePage() {
                 {bookingsLoading ? (
                     <div className="text-center py-10">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
-                        <p className="text-sm text-gray-500">Loading bookings...</p>
+                        <p className="text-sm text-gray-500">{t('profile.loadingBookings')}</p>
                     </div>
                 ) : (
                     <>
@@ -139,15 +139,15 @@ export default function ProfilePage() {
                                         <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                                             <i className="fa-regular fa-calendar-plus text-3xl text-gray-300"></i>
                                         </div>
-                                        <p className="text-sm font-bold text-gray-500">No upcoming plans</p>
-                                        <p className="text-xs text-gray-400 mt-1 max-w-[200px] mx-auto">Find a host nearby to learn something new.</p>
+                                        <p className="text-sm font-bold text-gray-500">{t('profile.noPlans')}</p>
+                                        <p className="text-xs text-gray-400 mt-1 max-w-[200px] mx-auto">{t('profile.findHost')}</p>
                                         <Link href="/search" className="mt-4 bg-black text-white text-xs font-bold px-6 py-3 rounded-full inline-block shadow-lg hover:bg-gray-800 transition">
-                                            Find a Session
+                                            {t('profile.findSession')}
                                         </Link>
                                     </div>
                                 ) : (
                                     <>
-                                        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Upcoming</h2>
+                                        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">{t('profile.upcoming')}</h2>
                                         {currentBookings.filter(b => b.status !== 'completed' && b.status !== 'cancelled').map(booking => (
                                             <div key={booking.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
                                                 <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 z-0"></div>

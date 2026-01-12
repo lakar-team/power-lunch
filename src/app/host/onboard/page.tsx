@@ -284,7 +284,7 @@ function OnboardContent() {
                         <Link href="/terms" target="_blank" className="text-blue-600 hover:underline font-medium">
                             Terms of Service
                         </Link>
-                        , including the platform fee structure (15%), tax responsibilities, and limitation of liability.
+                        , including the platform fee structure, tax responsibilities, and limitation of liability.
                         I understand that Power Lunch acts as an intermediary and I am responsible for my own tax obligations.
                     </span>
                 </label>

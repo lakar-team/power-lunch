@@ -6,11 +6,14 @@ import { useEffect, useRef, useState } from 'react'
 import { getListings } from '@/lib/api/listings'
 import { Listing } from '@/lib/types/supabase'
 
-const filters = [
+import { categories } from '@/lib/categories'
+
+// Quick filter buttons at the top of the search page
+const quickFilters = [
     { key: 'all', label: 'All', icon: null },
-    { key: 'english', label: 'English', icon: 'fa-language', color: 'text-blue-500' },
-    { key: 'tech', label: 'Tech', icon: 'fa-laptop-code', color: 'text-purple-500' },
-    { key: 'design', label: 'Design', icon: 'fa-compass-drafting', color: 'text-orange-500' },
+    { key: 'language', label: 'Language', icon: 'fa-language', color: 'text-blue-500' },
+    { key: 'technology', label: 'Tech', icon: 'fa-laptop-code', color: 'text-purple-500' },
+    { key: 'creative', label: 'Design', icon: 'fa-palette', color: 'text-orange-500' },
     { key: 'cheap', label: 'Under ¥1000', icon: null },
 ]
 
@@ -203,7 +206,7 @@ export default function SearchPage() {
 
                 {/* Filter Pills */}
                 <div className="flex space-x-2 overflow-x-auto pl-hide-scrollbar mt-3 pb-1">
-                    {filters.map(filter => (
+                    {quickFilters.map(filter => (
                         <button
                             key={filter.key}
                             onClick={() => handleFilterClick(filter.key)}
@@ -252,9 +255,13 @@ export default function SearchPage() {
                         <div className="mb-6">
                             <label className="text-sm font-bold text-gray-700 mb-3 block">Category</label>
                             <div className="flex flex-wrap gap-2">
-                                {['All', '🇬🇧 English', '💻 Tech', '🎨 Design', '💼 Career'].map(cat => (
-                                    <button key={cat} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-bold hover:bg-black hover:text-white transition">
-                                        {cat}
+                                <button className="bg-black text-white px-4 py-2 rounded-full text-sm font-bold">
+                                    All
+                                </button>
+                                {categories.map(cat => (
+                                    <button key={cat.id} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-bold hover:bg-black hover:text-white transition">
+                                        <i className={`fa-solid ${cat.icon} mr-1.5 ${cat.color.split(' ')[1]}`}></i>
+                                        {cat.label.split(' & ')[0]}
                                     </button>
                                 ))}
                             </div>

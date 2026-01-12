@@ -84,6 +84,18 @@ const translations = {
         'host.onboard.btn': 'Start Onboarding',
         'host.onboard.loading': 'Setting up...',
 
+        // Profile Page
+        'profile.hosting': 'Hosting',
+        'profile.wallet': 'Wallet',
+        'profile.newMember': 'New Member',
+        'profile.noPlans': 'No upcoming plans',
+        'profile.findHost': 'Find a host nearby to learn something new.',
+        'profile.findSession': 'Find a Session',
+        'profile.upcoming': 'Upcoming',
+        'profile.view': 'View',
+        'profile.settingsSoon': 'Settings coming soon!',
+        'profile.loadingBookings': 'Loading bookings...',
+
         // Common
         'common.loading': 'Loading...',
         'common.error': 'An error occurred',
@@ -172,6 +184,18 @@ const translations = {
         'host.onboard.subtitle': 'スキルを共有して、ランチタイムに収入を得よう',
         'host.onboard.btn': '登録を開始',
         'host.onboard.loading': '準備中...',
+
+        // Profile Page
+        'profile.hosting': 'ホスティング',
+        'profile.wallet': 'ウォレット',
+        'profile.newMember': '新規メンバー',
+        'profile.noPlans': '予定はありません',
+        'profile.findHost': '近くのホストを探してみましょう。',
+        'profile.findSession': 'セッションを探す',
+        'profile.upcoming': '今後の予定',
+        'profile.view': '表示',
+        'profile.settingsSoon': '設定は近日公開!',
+        'profile.loadingBookings': '予約を読み込み中...',
 
         // Common
         'common.loading': '読み込み中...',
