@@ -8,13 +8,13 @@ interface PlatformStats {
     users: number
     listings: number
     sessions: number
-    experts: number
+    hosts: number
     payouts: number
 }
 
 export default function HomePage() {
     const { t, language } = useTranslation()
-    const [stats, setStats] = useState<PlatformStats>({ users: 0, listings: 0, sessions: 0, experts: 0, payouts: 0 })
+    const [stats, setStats] = useState<PlatformStats>({ users: 0, listings: 0, sessions: 0, hosts: 0, payouts: 0 })
 
     // Fetch platform stats
     useEffect(() => {

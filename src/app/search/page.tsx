@@ -325,7 +325,7 @@ export default function SearchPage() {
                                     <i className="fa-solid fa-video text-blue-500 mr-3"></i>
                                     <div>
                                         <p className="font-medium">Online Sessions Only</p>
-                                        <p className="text-xs text-gray-400">Show experts available via video call</p>
+                                        <p className="text-xs text-gray-400">Show hosts available via video call</p>
                                     </div>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">

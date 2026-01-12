@@ -50,7 +50,7 @@ export async function GET() {
             users: usersCount || 0,
             listings: listingsCount || 0,
             sessions: sessionsCount || 0,
-            experts: hostsCount || 0,
+            hosts: hostsCount || 0,
             payouts: totalPayouts
         })
 
@@ -60,7 +60,7 @@ export async function GET() {
             users: 0,
             listings: 0,
             sessions: 0,
-            experts: 0,
+            hosts: 0,
             payouts: 0
         })
     }
