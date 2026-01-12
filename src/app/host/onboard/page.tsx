@@ -266,27 +266,9 @@ function OnboardContent() {
                 <i className="fa-brands fa-stripe text-white text-4xl"></i>
             </div>
             <h2 className="text-2xl font-black mb-2">Set Up Payments</h2>
-            <p className="text-gray-500 mb-6">
-                We partner with Stripe to securely process payments. You'll receive payouts directly to your bank account.
+            <p className="text-gray-500 mb-8">
+                You'll be redirected to Stripe to securely set up your payout account. This only takes a few minutes.
             </p>
-
-            <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left">
-                <h3 className="font-bold mb-4">What you'll need:</h3>
-                <ul className="space-y-3">
-                    <li className="flex items-start">
-                        <i className="fa-solid fa-check-circle text-green-500 mt-1 mr-3"></i>
-                        <span className="text-sm text-gray-600">Valid ID (driver's license, passport, etc.)</span>
-                    </li>
-                    <li className="flex items-start">
-                        <i className="fa-solid fa-check-circle text-green-500 mt-1 mr-3"></i>
-                        <span className="text-sm text-gray-600">Bank account details for receiving payouts</span>
-                    </li>
-                    <li className="flex items-start">
-                        <i className="fa-solid fa-check-circle text-green-500 mt-1 mr-3"></i>
-                        <span className="text-sm text-gray-600">Basic business information</span>
-                    </li>
-                </ul>
-            </div>
 
             {/* Terms Acceptance */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 text-left">
