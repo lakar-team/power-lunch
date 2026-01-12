@@ -121,7 +121,7 @@ export default function SearchPage() {
 
         addMarkers(L, mapInstanceRef.current, listings)
 
-    }, [mapLoaded, listings, loading, activeFilter])
+    }, [mapLoaded, listings, loading, activeFilter, showOnlineOnly, selectedCategory])
 
     // Add markers function
     const addMarkers = (L: any, map: any, data: Listing[]) => {
@@ -145,17 +145,30 @@ export default function SearchPage() {
                 else shouldShow = category === activeFilter
             }
 
+            // Apply online filter
+            if (showOnlineOnly) {
+                const sessionType = (listing as any).session_type || 'in_person'
+                if (sessionType !== 'online' && sessionType !== 'both') {
+                    shouldShow = false
+                }
+            }
+
             if (!shouldShow) return
-            if (!listing.location_lat || !listing.location_lng) return
+
+            // For online-only listings, we can still show them (without location requirement)
+            const isOnlineSession = (listing as any).session_type === 'online'
+            if (!isOnlineSession && (!listing.location_lat || !listing.location_lng)) return
 
             const isHighlighted = listing.category?.toLowerCase().includes('english') || false
             const colorClass = isHighlighted ? 'bg-black text-white' : 'bg-white text-gray-800'
+            const hasOnline = (listing as any).session_type === 'online' || (listing as any).session_type === 'both'
 
             const icon = L.divIcon({
                 className: 'custom-pin',
                 html: `
                     <div class="flex flex-col items-center group cursor-pointer">
-                        <div class="${colorClass} px-2 py-1 rounded-lg shadow-md font-bold text-xs border border-gray-200 group-hover:scale-110 transition whitespace-nowrap">
+                        <div class="${colorClass} px-2 py-1 rounded-lg shadow-md font-bold text-xs border border-gray-200 group-hover:scale-110 transition whitespace-nowrap flex items-center">
+                            ${hasOnline ? '<i class="fa-solid fa-video text-blue-500 mr-1"></i>' : ''}
                             ¥${listing.price_yen.toLocaleString()}
                         </div>
                         <div class="text-gray-800 mt-[-4px] text-lg drop-shadow-md"><i class="fa-solid fa-location-dot"></i></div>
