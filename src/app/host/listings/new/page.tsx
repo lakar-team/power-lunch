@@ -32,6 +32,8 @@ export default function NewListingPage() {
     const [subcategory, setSubcategory] = useState('')
     const [price, setPrice] = useState(1500)
     const [duration, setDuration] = useState(60)
+    const [sessionType, setSessionType] = useState<'in_person' | 'online' | 'both'>('in_person')
+    const [meetLink, setMeetLink] = useState('')
     const [venueType, setVenueType] = useState('host_choice')
     const [specificLocation, setSpecificLocation] = useState('')
     const [locationArea, setLocationArea] = useState('')
@@ -82,8 +84,17 @@ export default function NewListingPage() {
                 category: subcategory ? `${mainCategory}:${subcategory}` : mainCategory,
                 price_yen: price,
                 duration_minutes: duration,
-                location_area: locationArea || 'Sendai, Japan',
-                venue_options: [
+                session_type: sessionType,
+                meet_link: sessionType !== 'in_person' ? meetLink : null,
+                location_area: sessionType === 'online' ? 'Online' : (locationArea || 'Sendai, Japan'),
+                venue_options: sessionType === 'online' ? [{
+                    id: 'online',
+                    name: 'Online Session',
+                    type: 'online',
+                    description: 'Video call via Google Meet',
+                    icon: 'fa-video',
+                    color: 'bg-blue-100 text-blue-600',
+                }] : [
                     {
                         id: venueType,
                         name: defaultVenues.find(v => v.id === venueType)?.name,
@@ -93,9 +104,9 @@ export default function NewListingPage() {
                         color: defaultVenues.find(v => v.id === venueType)?.color,
                     }
                 ],
-                // Default to Sendai coordinates (we can add location picker later)
-                location_lat: 38.2682,
-                location_lng: 140.8694,
+                // Default to Sendai coordinates (or null for online)
+                location_lat: sessionType === 'online' ? null : 38.2682,
+                location_lng: sessionType === 'online' ? null : 140.8694,
             }
 
             const { listing, error: createError } = await createListing(listingData)
@@ -175,8 +186,8 @@ export default function NewListingPage() {
                                             setSubcategory('') // Reset subcategory when changing main
                                         }}
                                         className={`p-3 rounded-xl border-2 text-left transition ${mainCategory === cat.id
-                                                ? 'border-black bg-gray-50'
-                                                : 'border-gray-200 hover:border-gray-300'
+                                            ? 'border-black bg-gray-50'
+                                            : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
                                         <div className="flex items-center">
@@ -208,8 +219,8 @@ export default function NewListingPage() {
                                             key={sub.id}
                                             onClick={() => setSubcategory(subcategory === sub.id ? '' : sub.id)}
                                             className={`px-3 py-2 rounded-full text-sm font-medium transition ${subcategory === sub.id
-                                                    ? 'bg-black text-white'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                ? 'bg-black text-white'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                         >
                                             {sub.label}
@@ -346,65 +357,154 @@ export default function NewListingPage() {
                     </div>
                 )}
 
-                {/* Step 4: Location */}
+                {/* Step 4: Session Type & Location */}
                 {step === 4 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-black mb-2">Where will you meet?</h2>
-                            <p className="text-gray-500">Choose how you'll decide on the venue.</p>
+                            <h2 className="text-2xl font-black mb-2">How will you meet?</h2>
+                            <p className="text-gray-500">Choose if you'll meet in person, online, or offer both options.</p>
                         </div>
 
+                        {/* Session Type Selection */}
                         <div className="space-y-3">
-                            {defaultVenues.map(venue => (
-                                <button
-                                    key={venue.id}
-                                    onClick={() => setVenueType(venue.id)}
-                                    className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${venueType === venue.id
-                                        ? 'border-black bg-gray-50'
-                                        : 'border-gray-200 hover:border-gray-300'
-                                        }`}
-                                >
-                                    <div className={`w-12 h-12 ${venue.color} rounded-xl flex items-center justify-center mr-4`}>
-                                        <i className={`fa-solid ${venue.icon} text-xl`}></i>
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="font-bold">{venue.name}</p>
-                                        <p className="text-sm text-gray-500">{venue.description}</p>
-                                    </div>
-                                    {venueType === venue.id && (
-                                        <i className="fa-solid fa-check text-green-500"></i>
-                                    )}
-                                </button>
-                            ))}
+                            <button
+                                onClick={() => setSessionType('in_person')}
+                                className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${sessionType === 'in_person'
+                                    ? 'border-black bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                            >
+                                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mr-4">
+                                    <i className="fa-solid fa-utensils text-xl"></i>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-bold">In-Person Only</p>
+                                    <p className="text-sm text-gray-500">Meet at a cafe or restaurant</p>
+                                </div>
+                                {sessionType === 'in_person' && (
+                                    <i className="fa-solid fa-check text-green-500"></i>
+                                )}
+                            </button>
+
+                            <button
+                                onClick={() => setSessionType('online')}
+                                className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${sessionType === 'online'
+                                    ? 'border-black bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                            >
+                                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mr-4">
+                                    <i className="fa-solid fa-video text-xl"></i>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-bold">Online Only</p>
+                                    <p className="text-sm text-gray-500">Connect via Google Meet</p>
+                                </div>
+                                {sessionType === 'online' && (
+                                    <i className="fa-solid fa-check text-green-500"></i>
+                                )}
+                            </button>
+
+                            <button
+                                onClick={() => setSessionType('both')}
+                                className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${sessionType === 'both'
+                                    ? 'border-black bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                            >
+                                <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mr-4">
+                                    <i className="fa-solid fa-people-arrows text-xl"></i>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-bold">Both Options</p>
+                                    <p className="text-sm text-gray-500">Let guests choose their preference</p>
+                                </div>
+                                {sessionType === 'both' && (
+                                    <i className="fa-solid fa-check text-green-500"></i>
+                                )}
+                            </button>
                         </div>
 
-                        {venueType === 'specific' && (
-                            <div>
+                        {/* Google Meet Link (for online/both) */}
+                        {(sessionType === 'online' || sessionType === 'both') && (
+                            <div className="bg-blue-50 p-4 rounded-xl">
                                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    Venue Name
+                                    <i className="fa-brands fa-google mr-2"></i>
+                                    Google Meet Link
                                 </label>
                                 <input
-                                    type="text"
-                                    value={specificLocation}
-                                    onChange={(e) => setSpecificLocation(e.target.value)}
-                                    placeholder="e.g., Starbucks Sendai Station"
-                                    className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                                    type="url"
+                                    value={meetLink}
+                                    onChange={(e) => setMeetLink(e.target.value)}
+                                    placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                                    className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
+                                <p className="text-xs text-gray-500 mt-2">
+                                    <i className="fa-solid fa-info-circle mr-1"></i>
+                                    Create your Meet link at <a href="https://meet.google.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">meet.google.com</a>
+                                </p>
                             </div>
                         )}
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">
-                                Area
-                            </label>
-                            <input
-                                type="text"
-                                value={locationArea}
-                                onChange={(e) => setLocationArea(e.target.value)}
-                                placeholder="e.g., Sendai Station Area"
-                                className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-                            />
-                        </div>
+                        {/* Physical Location Options (for in_person/both) */}
+                        {(sessionType === 'in_person' || sessionType === 'both') && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-3">Venue Preference</label>
+                                    <div className="space-y-3">
+                                        {defaultVenues.map(venue => (
+                                            <button
+                                                key={venue.id}
+                                                onClick={() => setVenueType(venue.id)}
+                                                className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${venueType === venue.id
+                                                    ? 'border-black bg-gray-50'
+                                                    : 'border-gray-200 hover:border-gray-300'
+                                                    }`}
+                                            >
+                                                <div className={`w-12 h-12 ${venue.color} rounded-xl flex items-center justify-center mr-4`}>
+                                                    <i className={`fa-solid ${venue.icon} text-xl`}></i>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-bold">{venue.name}</p>
+                                                    <p className="text-sm text-gray-500">{venue.description}</p>
+                                                </div>
+                                                {venueType === venue.id && (
+                                                    <i className="fa-solid fa-check text-green-500"></i>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {venueType === 'specific' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Venue Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={specificLocation}
+                                            onChange={(e) => setSpecificLocation(e.target.value)}
+                                            placeholder="e.g., Starbucks Sendai Station"
+                                            className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                                        />
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Area
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={locationArea}
+                                        onChange={(e) => setLocationArea(e.target.value)}
+                                        placeholder="e.g., Sendai Station Area"
+                                        className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         {error && (
                             <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm">
@@ -418,7 +518,11 @@ export default function NewListingPage() {
                             </button>
                             <button
                                 onClick={handleSubmit}
-                                disabled={loading || (venueType === 'specific' && !specificLocation)}
+                                disabled={
+                                    loading ||
+                                    ((sessionType === 'online' || sessionType === 'both') && !meetLink) ||
+                                    (sessionType !== 'online' && venueType === 'specific' && !specificLocation)
+                                }
                                 className="pl-btn pl-btn-success disabled:opacity-50"
                             >
                                 {loading ? (
