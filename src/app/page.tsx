@@ -2,10 +2,34 @@
 
 import Link from 'next/link'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+
+interface PlatformStats {
+    users: number
+    listings: number
+    sessions: number
+    hosts: number
+}
 
 export default function HomePage() {
-    const { t } = useTranslation()
+    const { t, language } = useTranslation()
+    const [stats, setStats] = useState<PlatformStats>({ users: 0, listings: 0, sessions: 0, hosts: 0 })
+
+    // Fetch platform stats
+    useEffect(() => {
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats')
+                if (res.ok) {
+                    const data = await res.json()
+                    setStats(data)
+                }
+            } catch (err) {
+                console.error('Failed to fetch stats:', err)
+            }
+        }
+        fetchStats()
+    }, [])
 
     // Scroll animation effect
     useEffect(() => {
@@ -107,7 +131,12 @@ export default function HomePage() {
                             <img src="https://ui-avatars.com/api/?name=Ken+M&background=random" alt="User" />
                             <img src="https://ui-avatars.com/api/?name=Lisa+T&background=random" alt="User" />
                         </div>
-                        <span className="text-white/80 text-sm">Join 1,200+ users worldwide</span>
+                        <span className="text-white/80 text-sm">
+                            {language === 'ja'
+                                ? `${stats.users > 0 ? stats.users.toLocaleString() : '多くの'}人以上のユーザーが参加中`
+                                : `Join ${stats.users > 0 ? stats.users.toLocaleString() + '+' : 'our'} users worldwide`
+                            }
+                        </span>
                     </div>
                 </div>
 
