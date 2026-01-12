@@ -87,6 +87,8 @@ export const categories: Category[] = [
         subcategories: [
             { id: 'ui_ux', label: 'UI/UX Design' },
             { id: 'graphic_design', label: 'Graphic Design' },
+            { id: 'architecture', label: 'Architecture' },
+            { id: 'interior_design', label: 'Interior Design' },
             { id: 'illustration', label: 'Illustration' },
             { id: 'photography', label: 'Photography' },
             { id: 'video', label: 'Video & Film' },
@@ -156,19 +158,21 @@ export const categories: Category[] = [
     },
     {
         id: 'culture',
-        label: 'Culture & Local',
-        icon: 'fa-earth-asia',
+        label: 'Culture & Society',
+        icon: 'fa-globe',
         color: 'bg-teal-100 text-teal-600',
-        description: 'Local culture, customs, and living',
+        description: 'Culture, customs, and social topics',
         subcategories: [
-            { id: 'japan_life', label: 'Living in Japan' },
-            { id: 'japan_culture', label: 'Japanese Culture' },
-            { id: 'expat_life', label: 'Expat Life' },
+            { id: 'cultural_exchange', label: 'Cultural Exchange' },
+            { id: 'expat_life', label: 'Expat & Immigrant Life' },
             { id: 'local_guide', label: 'Local City Guide' },
             { id: 'traditions', label: 'Traditions & Customs' },
             { id: 'food_culture', label: 'Food Culture' },
             { id: 'festivals', label: 'Festivals & Events' },
-            { id: 'history_local', label: 'Local History' },
+            { id: 'religion', label: 'Religion & Spirituality' },
+            { id: 'social_issues', label: 'Social Issues' },
+            { id: 'volunteering', label: 'Volunteering & NGO' },
+            { id: 'diversity', label: 'Diversity & Inclusion' },
         ]
     },
 ]
