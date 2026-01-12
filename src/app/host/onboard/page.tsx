@@ -80,7 +80,8 @@ function OnboardContent() {
             const data = await response.json()
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to start onboarding')
+                const errorMessage = data.details ? `${data.error}: ${data.details}` : data.error || 'Failed to start onboarding'
+                throw new Error(errorMessage)
             }
 
             // Redirect to Stripe
@@ -194,8 +195,8 @@ function OnboardContent() {
                                 setSelectedTopics([])
                             }}
                             className={`p-3 rounded-xl border-2 text-left transition ${selectedCategory === cat.id
-                                    ? 'border-black bg-gray-50'
-                                    : 'border-gray-200 hover:border-gray-300'
+                                ? 'border-black bg-gray-50'
+                                : 'border-gray-200 hover:border-gray-300'
                                 }`}
                         >
                             <div className="flex items-center">
@@ -227,8 +228,8 @@ function OnboardContent() {
                                 key={sub.id}
                                 onClick={() => handleTopicToggle(sub.id)}
                                 className={`px-3 py-2 rounded-full text-sm font-medium transition ${selectedTopics.includes(sub.id)
-                                        ? 'bg-black text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'bg-black text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
                                 {sub.label}
