@@ -1,6 +1,8 @@
 -- Migration: Add new host system tables
 -- Run this in Supabase SQL Editor
 
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- 1. Add topics array to hosts table
 ALTER TABLE hosts ADD COLUMN IF NOT EXISTS topics TEXT[] DEFAULT '{}';
 
@@ -81,3 +83,18 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_host_locations_updated_at
     BEFORE UPDATE ON host_locations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 9. Update bookings table to support host locations
+-- We make listing_id optional and add host_location_id
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS host_location_id UUID REFERENCES host_locations(id) ON DELETE SET NULL;
+ALTER TABLE bookings ALTER COLUMN listing_id DROP NOT NULL;
+
+-- 10. RLS for bookings with host_location_id
+-- Allow hosts to view bookings for their locations
+CREATE POLICY "Hosts can view bookings for their locations" ON bookings
+    FOR ALL USING (
+        host_location_id IN (
+            SELECT id FROM host_locations 
+            WHERE host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid())
+        )
+    );

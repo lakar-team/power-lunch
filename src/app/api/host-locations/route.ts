@@ -1,18 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Allowed fields for updates (whitelist)
+const ALLOWED_UPDATE_FIELDS = [
+    'name', 'location_area', 'location_lat', 'location_lng',
+    'session_type', 'meet_link', 'venue_options',
+    'price_yen', 'duration_minutes', 'is_active',
+    'date_start', 'date_end'
+]
 
-// GET: Fetch all locations for a host
+// Manual validation helper
+function validateLocationInput(body: any): { valid: boolean; error?: string; data?: any } {
+    if (!body.name || typeof body.name !== 'string' || body.name.length < 1 || body.name.length > 100) {
+        return { valid: false, error: 'Name is required (1-100 characters)' }
+    }
+
+    const sessionType = body.session_type || 'both'
+    if (!['in_person', 'online', 'both'].includes(sessionType)) {
+        return { valid: false, error: 'Invalid session_type' }
+    }
+
+    const priceYen = typeof body.price_yen === 'number' ? body.price_yen : 1500
+    if (priceYen < 500 || priceYen > 100000) {
+        return { valid: false, error: 'Price must be between ¥500 and ¥100,000' }
+    }
+
+    const durationMinutes = typeof body.duration_minutes === 'number' ? body.duration_minutes : 60
+    if (durationMinutes < 15 || durationMinutes > 240) {
+        return { valid: false, error: 'Duration must be between 15 and 240 minutes' }
+    }
+
+    return {
+        valid: true,
+        data: {
+            name: body.name.trim(),
+            location_area: body.location_area || null,
+            location_lat: typeof body.location_lat === 'number' ? body.location_lat : null,
+            location_lng: typeof body.location_lng === 'number' ? body.location_lng : null,
+            session_type: sessionType,
+            meet_link: body.meet_link || null,
+            venue_options: Array.isArray(body.venue_options) ? body.venue_options : [],
+            price_yen: priceYen,
+            duration_minutes: durationMinutes,
+            date_start: body.date_start || null,
+            date_end: body.date_end || null,
+        }
+    }
+}
+
+// GET: Fetch all locations (public) or for specific host
 export async function GET(request: NextRequest) {
+    const supabase = createAdminClient()
     const { searchParams } = new URL(request.url)
     const hostId = searchParams.get('host_id')
 
     if (!hostId) {
-        // If no host_id, return all active locations for map view
+        // Return all active locations for map view
         const { data, error } = await supabase
             .from('host_locations')
             .select(`
@@ -48,31 +91,43 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data)
 }
 
-// POST: Create a new location pin
+// POST: Create a new location pin (AUTHENTICATED)
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json()
-        const { host_id, name, location_area, location_lat, location_lng, session_type, meet_link, venue_options, price_yen, duration_minutes, date_start, date_end } = body
+        // Authenticate user
+        const authClient = createServerClient()
+        const { data: { user }, error: authError } = await authClient.auth.getUser()
 
-        if (!host_id || !name) {
-            return NextResponse.json({ error: 'host_id and name are required' }, { status: 400 })
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // Get user's host profile
+        const supabase = createAdminClient()
+        const { data: host, error: hostError } = await supabase
+            .from('hosts')
+            .select('id')
+            .eq('user_id', user.id)
+            .single()
+
+        if (hostError || !host) {
+            return NextResponse.json({ error: 'Host profile not found' }, { status: 403 })
+        }
+
+        // Parse and validate body
+        const body = await request.json()
+        const validation = validateLocationInput(body)
+
+        if (!validation.valid) {
+            return NextResponse.json({ error: validation.error }, { status: 400 })
+        }
+
+        // Insert with authenticated host_id (not from request body!)
         const { data, error } = await supabase
             .from('host_locations')
             .insert({
-                host_id,
-                name,
-                location_area,
-                location_lat,
-                location_lng,
-                session_type: session_type || 'both',
-                meet_link,
-                venue_options: venue_options || [],
-                price_yen: price_yen || 1500,
-                duration_minutes: duration_minutes || 60,
-                date_start,
-                date_end,
+                host_id: host.id,
+                ...validation.data,
                 is_active: true
             })
             .select()
@@ -81,25 +136,61 @@ export async function POST(request: NextRequest) {
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
-        return NextResponse.json(data)
+        return NextResponse.json(data, { status: 201 })
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 })
     }
 }
 
-// PUT: Update a location pin
+// PUT: Update a location pin (AUTHENTICATED + OWNERSHIP CHECK)
 export async function PUT(request: NextRequest) {
     try {
+        // Authenticate user
+        const authClient = createServerClient()
+        const { data: { user }, error: authError } = await authClient.auth.getUser()
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const body = await request.json()
         const { id, ...updates } = body
 
         if (!id) {
-            return NextResponse.json({ error: 'id is required' }, { status: 400 })
+            return NextResponse.json({ error: 'Location ID is required' }, { status: 400 })
+        }
+
+        const supabase = createAdminClient()
+
+        // Verify ownership: location belongs to user's host profile
+        const { data: location, error: locationError } = await supabase
+            .from('host_locations')
+            .select('host_id, host:hosts(user_id)')
+            .eq('id', id)
+            .single()
+
+        if (locationError || !location) {
+            return NextResponse.json({ error: 'Location not found' }, { status: 404 })
+        }
+
+        // Check if the current user owns this location
+        const hostUserId = (location.host as any)?.user_id
+        if (hostUserId !== user.id) {
+            return NextResponse.json({ error: 'Forbidden: You do not own this location' }, { status: 403 })
+        }
+
+        // Whitelist allowed update fields
+        const safeUpdates = Object.fromEntries(
+            Object.entries(updates).filter(([key]) => ALLOWED_UPDATE_FIELDS.includes(key))
+        )
+
+        if (Object.keys(safeUpdates).length === 0) {
+            return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
         }
 
         const { data, error } = await supabase
             .from('host_locations')
-            .update(updates)
+            .update(safeUpdates)
             .eq('id', id)
             .select()
             .single()
@@ -113,22 +204,52 @@ export async function PUT(request: NextRequest) {
     }
 }
 
-// DELETE: Delete a location pin
+// DELETE: Delete a location pin (AUTHENTICATED + OWNERSHIP CHECK)
 export async function DELETE(request: NextRequest) {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+    try {
+        // Authenticate user
+        const authClient = createServerClient()
+        const { data: { user }, error: authError } = await authClient.auth.getUser()
 
-    if (!id) {
-        return NextResponse.json({ error: 'id is required' }, { status: 400 })
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const { searchParams } = new URL(request.url)
+        const id = searchParams.get('id')
+
+        if (!id) {
+            return NextResponse.json({ error: 'Location ID is required' }, { status: 400 })
+        }
+
+        const supabase = createAdminClient()
+
+        // Verify ownership
+        const { data: location, error: locationError } = await supabase
+            .from('host_locations')
+            .select('host_id, host:hosts(user_id)')
+            .eq('id', id)
+            .single()
+
+        if (locationError || !location) {
+            return NextResponse.json({ error: 'Location not found' }, { status: 404 })
+        }
+
+        const hostUserId = (location.host as any)?.user_id
+        if (hostUserId !== user.id) {
+            return NextResponse.json({ error: 'Forbidden: You do not own this location' }, { status: 403 })
+        }
+
+        const { error } = await supabase
+            .from('host_locations')
+            .delete()
+            .eq('id', id)
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+        return NextResponse.json({ success: true })
+    } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 500 })
     }
-
-    const { error } = await supabase
-        .from('host_locations')
-        .delete()
-        .eq('id', id)
-
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-    return NextResponse.json({ success: true })
 }

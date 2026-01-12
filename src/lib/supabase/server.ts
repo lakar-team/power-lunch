@@ -14,7 +14,6 @@ export const createServerClient = () => {
         cookies: {
             get(name: string) {
                 const cookie = cookieStore.get(name)
-                console.log(`[Supabase] Cookie get "${name}":`, cookie?.value ? `found (${cookie.value.substring(0, 20)}...)` : 'not found')
                 return cookie?.value
             },
             set(name: string, value: string, options: CookieOptions) {

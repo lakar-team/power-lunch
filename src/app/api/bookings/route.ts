@@ -129,10 +129,11 @@ export async function POST(request: NextRequest) {
     endDate.setHours(hours, minutes + listing.duration_minutes)
     const endTime = endDate.toTimeString().slice(0, 5)
 
-    // Generate QR code hash
+    // Generate QR code hash using dedicated secret
+    const qrSecret = process.env.QR_SECRET || process.env.STRIPE_WEBHOOK_SECRET || 'default-qr-salt'
     const qrCodeHash = crypto
         .createHash('sha256')
-        .update(`${body.listing_id}:${body.booking_date}:${Date.now()}:${process.env.STRIPE_WEBHOOK_SECRET}`)
+        .update(`${body.listing_id}:${body.booking_date}:${Date.now()}:${qrSecret}:${crypto.randomBytes(8).toString('hex')}`)
         .digest('hex')
         .slice(0, 16)
         .toUpperCase()
