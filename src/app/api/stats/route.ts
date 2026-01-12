@@ -26,10 +26,21 @@ export async function GET() {
             .select('*', { count: 'exact', head: true })
             .eq('status', 'completed')
 
-        // Get total hosts count
+        // Get total hosts/experts count
         const { count: hostsCount, error: hostsError } = await supabase
             .from('hosts')
             .select('*', { count: 'exact', head: true })
+
+        // Get total payouts (sum of completed booking amounts)
+        const { data: payoutsData, error: payoutsError } = await supabase
+            .from('bookings')
+            .select('total_price')
+            .eq('status', 'completed')
+
+        let totalPayouts = 0
+        if (payoutsData && !payoutsError) {
+            totalPayouts = payoutsData.reduce((sum, booking) => sum + (booking.total_price || 0), 0)
+        }
 
         if (usersError || listingsError || sessionsError || hostsError) {
             console.error('Stats fetch error:', { usersError, listingsError, sessionsError, hostsError })
@@ -39,7 +50,8 @@ export async function GET() {
             users: usersCount || 0,
             listings: listingsCount || 0,
             sessions: sessionsCount || 0,
-            hosts: hostsCount || 0
+            experts: hostsCount || 0,
+            payouts: totalPayouts
         })
 
     } catch (error: any) {
@@ -48,7 +60,9 @@ export async function GET() {
             users: 0,
             listings: 0,
             sessions: 0,
-            hosts: 0
+            experts: 0,
+            payouts: 0
         })
     }
 }
+

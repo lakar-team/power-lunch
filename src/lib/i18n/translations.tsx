@@ -21,16 +21,16 @@ const translations = {
         'home.hero.title': 'Turn Lunch into',
         'home.hero.titleHighlight': 'Learning',
         'home.hero.subtitle': 'Learn new skills or meet interesting people in 30-minute micro-sessions. Make the most of your lunch break.',
-        'home.hero.searchBtn': 'Find a Host',
-        'home.hero.hostBtn': 'Become a Host',
+        'home.hero.searchBtn': 'Find an Expert',
+        'home.hero.hostBtn': 'Become an Expert',
 
         'home.howItWorks': 'How It Works',
-        'home.step1.title': '1. Find a Host',
-        'home.step1.desc': 'Browse hosts by topic or location on the map',
+        'home.step1.title': '1. Find an Expert',
+        'home.step1.desc': 'Browse experts by topic or location on the map',
         'home.step2.title': '2. Book a Session',
         'home.step2.desc': 'Pick a convenient time and book instantly',
         'home.step3.title': '3. Meet & Learn',
-        'home.step3.desc': 'Enjoy a 30-minute session at a cafe or restaurant',
+        'home.step3.desc': 'Enjoy a 30-minute session at a cafe or online',
 
         'home.categories': 'Popular Categories',
         'home.category.english': 'English',
@@ -44,7 +44,7 @@ const translations = {
 
         'home.cta.title': 'Want to share your skills?',
         'home.cta.subtitle': 'Use your lunch break to share your experience and earn extra income.',
-        'home.cta.btn': 'Register as Host',
+        'home.cta.btn': 'Register as Expert',
 
         'footer.about': 'About',
         'footer.privacy': 'Privacy',
@@ -78,8 +78,8 @@ const translations = {
         'search.noResults': 'No hosts found',
         'search.loading': 'Searching...',
 
-        // Host Onboard
-        'host.onboard.title': 'Become a Host',
+        // Expert Onboard (formerly Host)
+        'host.onboard.title': 'Become an Expert',
         'host.onboard.subtitle': 'Share your knowledge, earn money, and connect with amazing people over lunch. It only takes a few minutes to get started.',
         'host.onboard.btn': 'Get Started',
         'host.onboard.loading': 'Setting up...',
@@ -87,16 +87,16 @@ const translations = {
         'host.onboard.createProfileDesc': 'Tell us about yourself and your expertise',
         'host.onboard.setUpPayments': 'Set Up Payments',
         'host.onboard.setUpPaymentsDesc': 'Connect Stripe to receive earnings',
-        'host.onboard.startHosting': 'Start Hosting',
-        'host.onboard.startHostingDesc': 'Create listings and meet guests',
+        'host.onboard.startHosting': 'Start Earning',
+        'host.onboard.startHostingDesc': 'Create sessions and meet learners',
         'host.onboard.aboutYou': 'About You',
-        'host.onboard.aboutYouDesc': 'Tell potential guests what makes you a great lunch companion.',
+        'host.onboard.aboutYouDesc': 'Tell potential learners what makes you a great mentor.',
         'host.onboard.yourBio': 'Your Bio',
         'host.onboard.expertise': 'Your Expertise',
         'host.onboard.expertiseDesc': 'Choose categories that match your skills.',
 
         // Profile Page
-        'profile.hosting': 'Hosting',
+        'profile.hosting': 'Expert',
         'profile.wallet': 'Wallet',
         'profile.newMember': 'New Member',
         'profile.noPlans': 'No upcoming plans',
@@ -156,7 +156,7 @@ const translations = {
 
         'home.cta.title': 'あなたのスキルを共有しませんか？',
         'home.cta.subtitle': 'ランチタイムを使って、経験やスキルを共有しよう。お小遣い稼ぎにもなります。',
-        'home.cta.btn': 'ホスト登録する',
+        'home.cta.btn': 'エキスパート登録する',
 
         'footer.about': 'About',
         'footer.privacy': 'プライバシー',
@@ -185,13 +185,13 @@ const translations = {
         'auth.signup.loginLink': 'ログイン',
 
         // Search
-        'search.title': 'ホストを探す',
+        'search.title': 'エキスパートを探す',
         'search.placeholder': 'トピック、名前、場所で検索',
-        'search.noResults': 'ホストが見つかりませんでした',
+        'search.noResults': 'エキスパートが見つかりませんでした',
         'search.loading': '検索中...',
 
-        // Host Onboard
-        'host.onboard.title': 'ホストになる',
+        // Expert Onboard
+        'host.onboard.title': 'エキスパートになる',
         'host.onboard.subtitle': 'ランチタイムを活用して、知識を共有し、収入を得ながら素敵な人々と出会おう。開始まで数分です。',
         'host.onboard.btn': '始める',
         'host.onboard.loading': '準備中...',

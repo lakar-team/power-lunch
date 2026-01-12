@@ -24,10 +24,15 @@ export default function SearchPage() {
     const markersRef = useRef<any[]>([])
     const [activeFilter, setActiveFilter] = useState('all')
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
+    const [showOnlineOnly, setShowOnlineOnly] = useState(false)
     const [showFilterModal, setShowFilterModal] = useState(false)
     const [mapLoaded, setMapLoaded] = useState(false)
     const [listings, setListings] = useState<Listing[]>([])
     const [loading, setLoading] = useState(true)
+
+    // Get the selected category's subcategories
+    const selectedCategoryData = selectedCategory ? categories.find(c => c.id === selectedCategory) : null
 
     // Load Leaflet from CDN
     useEffect(() => {
@@ -257,7 +262,7 @@ export default function SearchPage() {
                             <label className="text-sm font-bold text-gray-700 mb-3 block">Category</label>
                             <div className="flex flex-wrap gap-2">
                                 <button
-                                    onClick={() => setSelectedCategory(null)}
+                                    onClick={() => { setSelectedCategory(null); setSelectedSubcategory(null); }}
                                     className={`px-4 py-2 rounded-full text-sm font-bold transition ${selectedCategory === null ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                                 >
                                     All
@@ -265,13 +270,60 @@ export default function SearchPage() {
                                 {categories.map(cat => (
                                     <button
                                         key={cat.id}
-                                        onClick={() => setSelectedCategory(cat.id)}
+                                        onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory(null); }}
                                         className={`px-4 py-2 rounded-full text-sm font-bold transition ${selectedCategory === cat.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                                     >
                                         <i className={`fa-solid ${cat.icon} mr-1.5 ${selectedCategory === cat.id ? '' : cat.color.split(' ')[1]}`}></i>
                                         {cat.label.split(' & ')[0]}
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+
+                        {/* Subcategory (shows when category selected) */}
+                        {selectedCategoryData && selectedCategoryData.subcategories && (
+                            <div className="mb-6">
+                                <label className="text-sm font-bold text-gray-700 mb-3 block">Specific Topic</label>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => setSelectedSubcategory(null)}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${selectedSubcategory === null ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                        All {selectedCategoryData.label.split(' & ')[0]}
+                                    </button>
+                                    {selectedCategoryData.subcategories.map(sub => (
+                                        <button
+                                            key={sub.id}
+                                            onClick={() => setSelectedSubcategory(sub.id)}
+                                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${selectedSubcategory === sub.id ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                        >
+                                            {sub.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Online Sessions Toggle */}
+                        <div className="mb-6">
+                            <label className="text-sm font-bold text-gray-700 mb-3 block">Session Type</label>
+                            <div className="flex items-center justify-between bg-gray-50 p-4 rounded-xl">
+                                <div className="flex items-center">
+                                    <i className="fa-solid fa-video text-blue-500 mr-3"></i>
+                                    <div>
+                                        <p className="font-medium">Online Sessions Only</p>
+                                        <p className="text-xs text-gray-400">Show experts available via video call</p>
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={showOnlineOnly}
+                                        onChange={(e) => setShowOnlineOnly(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                                </label>
                             </div>
                         </div>
 
