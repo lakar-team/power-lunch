@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
+// Use Edge Runtime for Cloudflare
+export const runtime = 'edge'
+
 // GET /api/debug/auth - Debug endpoint to test authentication
 export async function GET(request: NextRequest) {
     // Get all cookie names for debugging

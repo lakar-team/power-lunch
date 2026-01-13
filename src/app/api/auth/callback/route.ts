@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
+// Use Edge Runtime for Cloudflare
+export const runtime = 'edge'
+
 // Supabase Auth callback handler
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)

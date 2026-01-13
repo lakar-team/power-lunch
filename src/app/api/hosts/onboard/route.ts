@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { createConnectedAccount, createConnectOnboardingLink } from '@/lib/stripe'
 
+// Use Edge Runtime for Cloudflare
+export const runtime = 'edge'
+
 // POST /api/hosts/onboard - Start Stripe Connect onboarding
 export async function POST(request: NextRequest) {
     try {

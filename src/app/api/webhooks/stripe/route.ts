@@ -4,6 +4,9 @@ import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
+// Use Edge Runtime for Cloudflare
+export const runtime = 'edge'
+
 export async function POST(request: NextRequest) {
     const body = await request.text()
     const signature = headers().get('stripe-signature')!

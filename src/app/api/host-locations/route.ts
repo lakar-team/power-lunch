@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 
+// Use Edge Runtime for Cloudflare
+export const runtime = 'edge'
+
 // Allowed fields for updates (whitelist)
 const ALLOWED_UPDATE_FIELDS = [
     'name', 'location_area', 'location_lat', 'location_lng',

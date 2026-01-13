@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import crypto from 'crypto'
+
+// Use Edge Runtime for Cloudflare
+export const runtime = 'edge'
 
 // POST /api/qr/verify - Verify a guest's QR code
 export async function POST(request: NextRequest) {

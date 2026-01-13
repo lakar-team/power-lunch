@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
+// Use Edge Runtime for Cloudflare
+export const runtime = 'edge'
+
 export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }

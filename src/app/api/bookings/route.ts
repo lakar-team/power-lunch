@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { createPaymentIntent, calculateFees } from '@/lib/stripe'
-import crypto from 'crypto'
+
+// Use Edge Runtime for Cloudflare
+export const runtime = 'edge'
+
+// Helper to generate secure hash using Web Crypto API
+async function generateSecureHash(data: string): Promise<string> {
+    const encoder = new TextEncoder()
+    const dataBuffer = encoder.encode(data)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16).toUpperCase()
+}
 
 // GET /api/bookings - Get user's bookings
 export async function GET(request: NextRequest) {
@@ -131,12 +142,8 @@ export async function POST(request: NextRequest) {
 
     // Generate QR code hash using dedicated secret
     const qrSecret = process.env.QR_SECRET || process.env.STRIPE_WEBHOOK_SECRET || 'default-qr-salt'
-    const qrCodeHash = crypto
-        .createHash('sha256')
-        .update(`${body.listing_id}:${body.booking_date}:${Date.now()}:${qrSecret}:${crypto.randomBytes(8).toString('hex')}`)
-        .digest('hex')
-        .slice(0, 16)
-        .toUpperCase()
+    const randomPart = Math.random().toString(36).substring(2, 10)
+    const qrCodeHash = await generateSecureHash(`${body.listing_id}:${body.booking_date}:${Date.now()}:${qrSecret}:${randomPart}`)
 
     // Create Stripe Payment Intent
     let paymentIntent

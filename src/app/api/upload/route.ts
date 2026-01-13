@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
+// Use Edge Runtime for Cloudflare
+export const runtime = 'edge'
+
 // R2 Image Upload - Currently disabled until R2 is configured
 // To enable: 
 // 1. Set up R2 bucket in Cloudflare

@@ -1,5 +1,7 @@
 'use client'
 
+export const runtime = 'edge'
+
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -187,12 +189,12 @@ export default function HostProfilePage() {
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-start">
                                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-4 ${location.session_type === 'online' ? 'bg-blue-100 text-blue-600' :
-                                                location.session_type === 'both' ? 'bg-purple-100 text-purple-600' :
-                                                    'bg-green-100 text-green-600'
+                                            location.session_type === 'both' ? 'bg-purple-100 text-purple-600' :
+                                                'bg-green-100 text-green-600'
                                             }`}>
                                             <i className={`fa-solid ${location.session_type === 'online' ? 'fa-video' :
-                                                    location.session_type === 'both' ? 'fa-people-arrows' :
-                                                        'fa-utensils'
+                                                location.session_type === 'both' ? 'fa-people-arrows' :
+                                                    'fa-utensils'
                                                 } text-xl`}></i>
                                         </div>
                                         <div>
@@ -203,8 +205,8 @@ export default function HostProfilePage() {
                                                     {location.duration_minutes}min
                                                 </span>
                                                 <span className={`text-xs px-2 py-1 rounded-full ${location.session_type === 'online' ? 'bg-blue-100 text-blue-700' :
-                                                        location.session_type === 'both' ? 'bg-purple-100 text-purple-700' :
-                                                            'bg-green-100 text-green-700'
+                                                    location.session_type === 'both' ? 'bg-purple-100 text-purple-700' :
+                                                        'bg-green-100 text-green-700'
                                                     }`}>
                                                     {location.session_type === 'online' ? 'Online' :
                                                         location.session_type === 'both' ? 'Online + In-Person' :

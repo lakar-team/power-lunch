@@ -1,5 +1,7 @@
 'use client'
 
+export const runtime = 'edge'
+
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { LanguageToggle, useTranslation } from '@/lib/i18n/translations'
