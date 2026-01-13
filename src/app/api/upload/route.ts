@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { uploadImage } from '@/lib/r2/client'
+
+// R2 Image Upload - Currently disabled until R2 is configured
+// To enable: 
+// 1. Set up R2 bucket in Cloudflare
+// 2. Add R2 environment variables
+// 3. Install: npm install @aws-sdk/client-s3
+// 4. Uncomment the R2 client import and upload logic
 
 // POST: Upload an image (authenticated)
 export async function POST(request: NextRequest) {
@@ -13,42 +19,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Parse multipart form data
-        const formData = await request.formData()
-        const file = formData.get('file') as File | null
+        // R2 not configured yet - return placeholder response
+        return NextResponse.json({
+            error: 'Image upload not configured yet. Please set up Cloudflare R2.'
+        }, { status: 501 })
 
-        if (!file) {
-            return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-        }
-
-        // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-        if (!allowedTypes.includes(file.type)) {
-            return NextResponse.json({
-                error: 'Invalid file type. Allowed: JPEG, PNG, WebP, GIF'
-            }, { status: 400 })
-        }
-
-        // Validate file size (max 5MB)
-        const maxSize = 5 * 1024 * 1024
-        if (file.size > maxSize) {
-            return NextResponse.json({
-                error: 'File too large. Maximum 5MB'
-            }, { status: 400 })
-        }
-
-        // Convert to buffer
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-
-        // Generate safe filename
-        const ext = file.name.split('.').pop() || 'jpg'
-        const safeName = `${user.id}-${Date.now()}.${ext}`
-
-        // Upload to R2
-        const url = await uploadImage(buffer, safeName, file.type)
-
-        return NextResponse.json({ url }, { status: 201 })
+        // TODO: Uncomment when R2 is configured
+        // const formData = await request.formData()
+        // const file = formData.get('file') as File | null
+        // ... upload logic
     } catch (err: any) {
         console.error('Upload error:', err)
         return NextResponse.json({ error: err.message }, { status: 500 })
