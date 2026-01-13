@@ -54,10 +54,3 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: err.message }, { status: 500 })
     }
 }
-
-// Config for file uploads
-export const config = {
-    api: {
-        bodyParser: false,
-    },
-}
