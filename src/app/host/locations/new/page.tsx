@@ -111,24 +111,30 @@ export default function NewLocationPage() {
     useEffect(() => {
         if (step !== 1 || !mapContainerRef.current || mapRef.current) return
 
-        const initMap = async () => {
-            // Load MapLibre CSS via link tag (avoids build issues)
-            if (!document.getElementById('maplibre-css')) {
-                const link = document.createElement('link')
-                link.id = 'maplibre-css'
-                link.rel = 'stylesheet'
-                link.href = 'https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css'
-                document.head.appendChild(link)
-            }
+const initMap = async () => {
+            try {
+                // Load MapLibre CSS via link tag (avoids build issues)
+                if (!document.getElementById('maplibre-css')) {
+                    const link = document.createElement('link')
+                    link.id = 'maplibre-css'
+                    link.rel = 'stylesheet'
+                    link.href = 'https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css'
+                    document.head.appendChild(link)
+                }
 
-            const maplibregl = (await import('maplibre-gl')).default
+                const maplibregl = (await import('maplibre-gl')).default
 
-            const map = new maplibregl.Map({
-                container: mapContainerRef.current!,
-                style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-                center: [centralLng, centralLat],
-                zoom: 12,
-            })
+                const map = new maplibregl.Map({
+                    container: mapContainerRef.current!,
+                    style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+                    center: [centralLng, centralLat],
+                    zoom: 12,
+                })
+
+                // Wait for map to load
+                map.on('load', () => {
+                    console.log('Map loaded successfully')
+                })
 
             // Central marker
             const marker = new maplibregl.Marker({ color: '#000', draggable: true })
@@ -150,10 +156,15 @@ export default function NewLocationPage() {
                 reverseGeocode(e.lngLat.lat, e.lngLat.lng)
             })
 
-            mapRef.current = map
+mapRef.current = map
 
-            // Initial geocode
-            reverseGeocode(centralLat, centralLng)
+                // Initial geocode
+                reverseGeocode(centralLat, centralLng)
+            })
+            } catch (error) {
+                console.error('Error initializing map:', error)
+                setError('Failed to load map. Please refresh the page.')
+            }
         }
 
         initMap()
@@ -361,10 +372,21 @@ export default function NewLocationPage() {
 
                         {/* Map Container */}
                         <div className="relative">
-                            <div
-                                ref={mapContainerRef}
-                                className="w-full h-64 rounded-xl overflow-hidden border border-gray-200"
-                            />
+<div className="relative">
+                                <div
+                                    ref={mapContainerRef}
+                                    className="w-full h-64 rounded-xl overflow-hidden border border-gray-200 bg-gray-100"
+                                    style={{ minHeight: '256px' }}
+                                />
+                                {!mapRef.current && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-xl">
+                                        <div className="text-gray-500">
+                                            <i className="fa-solid fa-map-location-dot mr-2"></i>
+                                            Loading map...
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             <div className="absolute bottom-3 left-3 bg-white px-3 py-2 rounded-lg shadow text-sm">
                                 <i className="fa-solid fa-location-dot mr-2 text-black"></i>
                                 {isGeocodingLoading ? (
