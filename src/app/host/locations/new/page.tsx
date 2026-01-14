@@ -112,8 +112,16 @@ export default function NewLocationPage() {
         if (step !== 1 || !mapContainerRef.current || mapRef.current) return
 
         const initMap = async () => {
+            // Load MapLibre CSS via link tag (avoids build issues)
+            if (!document.getElementById('maplibre-css')) {
+                const link = document.createElement('link')
+                link.id = 'maplibre-css'
+                link.rel = 'stylesheet'
+                link.href = 'https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css'
+                document.head.appendChild(link)
+            }
+
             const maplibregl = (await import('maplibre-gl')).default
-            await import('maplibre-gl/dist/maplibre-gl.css')
 
             const map = new maplibregl.Map({
                 container: mapContainerRef.current!,
