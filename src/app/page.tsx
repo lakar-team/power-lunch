@@ -235,6 +235,19 @@ export default function HomePage() {
                     <i className="fa-brands fa-apple text-2xl text-gray-400"></i>
                     <i className="fa-brands fa-google text-2xl text-gray-400"></i>
                 </div>
+
+                <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-8">
+                    <Link href="/terms" className="hover:text-gray-800 transition">
+                        {language === 'ja' ? '利用規約' : 'Terms'}
+                    </Link>
+                    <Link href="/privacy" className="hover:text-gray-800 transition">
+                        {language === 'ja' ? 'プライバシーポリシー' : 'Privacy'}
+                    </Link>
+                    <Link href="/commercial-disclosure" className="hover:text-gray-800 transition">
+                        {language === 'ja' ? '特定商取引法に基づく表記' : 'Commercial Disclosure'}
+                    </Link>
+                </div>
+
                 <p>© 2026 Power Lunch. All rights reserved.</p>
             </footer>
         </div>

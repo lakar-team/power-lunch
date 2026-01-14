@@ -1,41 +1,88 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { supabase } from '@/lib/supabase/client'
 
-const defaultVenues = [
-    { id: 'host_choice', name: "Host's Choice", type: 'flexible', description: "I'll pick a great spot", icon: 'fa-location-dot', color: 'bg-blue-100 text-blue-600' },
-    { id: 'guest_choice', name: "Guest's Choice", type: 'flexible', description: 'Guest picks the venue', icon: 'fa-user', color: 'bg-purple-100 text-purple-600' },
-    { id: 'specific', name: 'Specific Location', type: 'fixed', description: 'Always meet here', icon: 'fa-map-pin', color: 'bg-green-100 text-green-600' },
-]
+// Types
+interface Venue {
+    id: string
+    name: string
+    lat: number
+    lng: number
+}
 
+interface WeeklySlot {
+    day: number // 0 = Sunday, 6 = Saturday
+    startTime: string
+    endTime: string
+}
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const TIME_SLOTS = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00']
 const durations = [30, 45, 60, 90]
 
 export default function NewLocationPage() {
-    const { t } = useTranslation()
+    const { t, language } = useTranslation()
     const router = useRouter()
+    const mapContainerRef = useRef<HTMLDivElement>(null)
+    const mapRef = useRef<any>(null)
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [host, setHost] = useState<any>(null)
     const [step, setStep] = useState(1)
 
-    // Form data
+    // Step 1: Central Location
     const [name, setName] = useState('')
+    const [centralLat, setCentralLat] = useState<number>(35.6762) // Default: Tokyo
+    const [centralLng, setCentralLng] = useState<number>(139.6503)
     const [locationArea, setLocationArea] = useState('')
+    const [isGeocodingLoading, setIsGeocodingLoading] = useState(false)
+
+    // Step 2: Session Type & Venues
     const [sessionType, setSessionType] = useState<'in_person' | 'online' | 'both'>('both')
     const [meetLink, setMeetLink] = useState('')
-    const [venueType, setVenueType] = useState('host_choice')
-    const [specificLocation, setSpecificLocation] = useState('')
+    const [venues, setVenues] = useState<Venue[]>([])
+    const [newVenueName, setNewVenueName] = useState('')
+    const [isAddingVenue, setIsAddingVenue] = useState(false)
+    const [tempVenueMarker, setTempVenueMarker] = useState<{ lat: number; lng: number } | null>(null)
+
+    // Step 3: Pricing
     const [price, setPrice] = useState(1500)
     const [duration, setDuration] = useState(60)
-    const [dateStart, setDateStart] = useState('')
-    const [dateEnd, setDateEnd] = useState('')
-    const [isTemporary, setIsTemporary] = useState(false)
 
+    // Step 4: Availability
+    const [validFrom, setValidFrom] = useState('')
+    const [validUntil, setValidUntil] = useState('')
+    const [weeklySlots, setWeeklySlots] = useState<WeeklySlot[]>([])
+    const [blockedDates, setBlockedDates] = useState<string[]>([])
+
+    // Reverse geocode function
+    const reverseGeocode = useCallback(async (lat: number, lng: number) => {
+        setIsGeocodingLoading(true)
+        try {
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
+                { headers: { 'Accept-Language': language } }
+            )
+            const data = await res.json()
+            if (data.address) {
+                const city = data.address.city || data.address.town || data.address.village || data.address.county || ''
+                const area = data.address.suburb || data.address.neighbourhood || data.address.district || ''
+                const country = data.address.country || ''
+                setLocationArea(area ? `${area}, ${city}` : city || country)
+            }
+        } catch (err) {
+            console.error('Geocoding failed:', err)
+        } finally {
+            setIsGeocodingLoading(false)
+        }
+    }, [language])
+
+    // Check host auth
     useEffect(() => {
         async function checkHost() {
             const { data: { session } } = await supabase.auth.getSession()
@@ -60,6 +107,144 @@ export default function NewLocationPage() {
         checkHost()
     }, [router])
 
+    // Initialize map (only when step 1 is active)
+    useEffect(() => {
+        if (step !== 1 || !mapContainerRef.current || mapRef.current) return
+
+        const initMap = async () => {
+            const maplibregl = (await import('maplibre-gl')).default
+            await import('maplibre-gl/dist/maplibre-gl.css')
+
+            const map = new maplibregl.Map({
+                container: mapContainerRef.current!,
+                style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+                center: [centralLng, centralLat],
+                zoom: 12,
+            })
+
+            // Central marker
+            const marker = new maplibregl.Marker({ color: '#000', draggable: true })
+                .setLngLat([centralLng, centralLat])
+                .addTo(map)
+
+            marker.on('dragend', () => {
+                const lngLat = marker.getLngLat()
+                setCentralLat(lngLat.lat)
+                setCentralLng(lngLat.lng)
+                reverseGeocode(lngLat.lat, lngLat.lng)
+            })
+
+            // Click to move marker
+            map.on('click', (e) => {
+                marker.setLngLat([e.lngLat.lng, e.lngLat.lat])
+                setCentralLat(e.lngLat.lat)
+                setCentralLng(e.lngLat.lng)
+                reverseGeocode(e.lngLat.lat, e.lngLat.lng)
+            })
+
+            mapRef.current = map
+
+            // Initial geocode
+            reverseGeocode(centralLat, centralLng)
+        }
+
+        initMap()
+
+        return () => {
+            if (mapRef.current) {
+                mapRef.current.remove()
+                mapRef.current = null
+            }
+        }
+    }, [step, centralLat, centralLng, reverseGeocode])
+
+    // Calculate distance between two points (Haversine formula)
+    const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371
+        const dLat = (lat2 - lat1) * Math.PI / 180
+        const dLng = (lng2 - lng1) * Math.PI / 180
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2)
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return R * c
+    }
+
+    // Add venue
+    const addVenue = () => {
+        if (!tempVenueMarker || !newVenueName.trim()) return
+
+        const distance = getDistanceKm(centralLat, centralLng, tempVenueMarker.lat, tempVenueMarker.lng)
+        if (distance > 3) {
+            setError('Venue must be within 3km of central location')
+            return
+        }
+
+        setVenues([...venues, {
+            id: `venue_${Date.now()}`,
+            name: newVenueName.trim(),
+            lat: tempVenueMarker.lat,
+            lng: tempVenueMarker.lng,
+        }])
+        setNewVenueName('')
+        setTempVenueMarker(null)
+        setIsAddingVenue(false)
+        setError(null)
+    }
+
+    // Remove venue
+    const removeVenue = (id: string) => {
+        setVenues(venues.filter(v => v.id !== id))
+    }
+
+    // Toggle weekly slot
+    const toggleSlot = (day: number, time: string) => {
+        const existing = weeklySlots.find(s => s.day === day && s.startTime === time)
+        if (existing) {
+            setWeeklySlots(weeklySlots.filter(s => !(s.day === day && s.startTime === time)))
+        } else {
+            setWeeklySlots([...weeklySlots, {
+                day,
+                startTime: time,
+                endTime: `${parseInt(time) + 1}:00`,
+            }])
+        }
+    }
+
+    // Check if slot is selected
+    const isSlotSelected = (day: number, time: string): boolean => {
+        return weeklySlots.some(s => s.day === day && s.startTime === time)
+    }
+
+    // Generate dates between validFrom and validUntil
+    const generateDateRange = (): string[] => {
+        if (!validFrom || !validUntil) return []
+        const dates: string[] = []
+        const start = new Date(validFrom)
+        const end = new Date(validUntil)
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            dates.push(d.toISOString().split('T')[0])
+        }
+        return dates
+    }
+
+    // Toggle blocked date
+    const toggleBlockedDate = (date: string) => {
+        if (blockedDates.includes(date)) {
+            setBlockedDates(blockedDates.filter(d => d !== date))
+        } else {
+            setBlockedDates([...blockedDates, date])
+        }
+    }
+
+    // Check if date should be available based on weekly slots
+    const isDateAvailable = (dateStr: string): boolean => {
+        const date = new Date(dateStr)
+        const dayOfWeek = date.getDay()
+        return weeklySlots.some(s => s.day === dayOfWeek)
+    }
+
+    // Submit
     const handleSubmit = async () => {
         if (!host) return
 
@@ -67,21 +252,7 @@ export default function NewLocationPage() {
         setError(null)
 
         try {
-            const venueOptions = sessionType === 'online' ? [{
-                id: 'online',
-                name: 'Online Session',
-                type: 'online',
-                description: 'Video call via Google Meet',
-                icon: 'fa-video',
-                color: 'bg-blue-100 text-blue-600',
-            }] : [{
-                id: venueType,
-                name: defaultVenues.find(v => v.id === venueType)?.name,
-                type: defaultVenues.find(v => v.id === venueType)?.type,
-                description: venueType === 'specific' ? specificLocation : defaultVenues.find(v => v.id === venueType)?.description,
-                icon: defaultVenues.find(v => v.id === venueType)?.icon,
-                color: defaultVenues.find(v => v.id === venueType)?.color,
-            }]
+            const venueOptions = sessionType === 'online' ? [] : venues
 
             const res = await fetch('/api/host-locations', {
                 method: 'POST',
@@ -90,15 +261,19 @@ export default function NewLocationPage() {
                     host_id: host.id,
                     name,
                     location_area: sessionType === 'online' ? 'Online' : locationArea,
-                    location_lat: sessionType === 'online' ? null : 38.2682, // Default to Sendai
-                    location_lng: sessionType === 'online' ? null : 140.8694,
+                    location_lat: sessionType === 'online' ? null : centralLat,
+                    location_lng: sessionType === 'online' ? null : centralLng,
                     session_type: sessionType,
                     meet_link: sessionType !== 'in_person' ? meetLink : null,
                     venue_options: venueOptions,
                     price_yen: price,
                     duration_minutes: duration,
-                    date_start: isTemporary ? dateStart : null,
-                    date_end: isTemporary ? dateEnd : null,
+                    availability: {
+                        valid_from: validFrom || null,
+                        valid_until: validUntil || null,
+                        weekly: weeklySlots,
+                    },
+                    blocked_dates: blockedDates,
                 })
             })
 
@@ -130,7 +305,7 @@ export default function NewLocationPage() {
                     <Link href="/host/dashboard" className="text-gray-500 hover:text-black mr-4">
                         <i className="fa-solid fa-arrow-left text-lg"></i>
                     </Link>
-                    <span className="font-bold">Add Location Pin</span>
+                    <span className="font-bold">Add Location</span>
                 </div>
                 <LanguageToggle />
             </header>
@@ -139,28 +314,28 @@ export default function NewLocationPage() {
             <div className="bg-white border-b border-gray-100 px-4 py-3">
                 <div className="max-w-lg mx-auto">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold">Step {step} of 3</span>
+                        <span className="text-sm font-bold">Step {step} of 4</span>
                         <span className="text-sm text-gray-400">
-                            {step === 1 ? 'Location' : step === 2 ? 'Session Type' : 'Pricing'}
+                            {step === 1 ? 'Location' : step === 2 ? 'Session & Venues' : step === 3 ? 'Pricing' : 'Schedule'}
                         </span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div
                             className="h-full bg-black transition-all duration-300"
-                            style={{ width: `${(step / 3) * 100}%` }}
+                            style={{ width: `${(step / 4) * 100}%` }}
                         />
                     </div>
                 </div>
             </div>
 
-            {/* Form */}
+            {/* Form Content */}
             <div className="max-w-lg mx-auto px-4 py-8">
-                {/* Step 1: Location Details */}
+                {/* Step 1: Central Location */}
                 {step === 1 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-black mb-2">Where will you host?</h2>
-                            <p className="text-gray-500">Give this location a name and area.</p>
+                            <h2 className="text-2xl font-black mb-2">Set Your Location</h2>
+                            <p className="text-gray-500">Drag the pin or click on the map to set your central area.</p>
                         </div>
 
                         <div>
@@ -171,64 +346,44 @@ export default function NewLocationPage() {
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g., Tokyo Office, Sendai Base"
+                                placeholder="e.g., Tokyo Sessions, Sendai Lunches"
                                 className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
                             />
-                            <p className="text-xs text-gray-400 mt-1">This is for your reference only</p>
                         </div>
 
-                        {/* Temporary Location Toggle */}
-                        <div className="bg-gray-50 p-4 rounded-xl">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                    <i className="fa-solid fa-plane text-blue-500 mr-3"></i>
-                                    <div>
-                                        <p className="font-medium">Temporary Location</p>
-                                        <p className="text-xs text-gray-400">For travel or limited time availability</p>
-                                    </div>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={isTemporary}
-                                        onChange={(e) => setIsTemporary(e.target.checked)}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
-                                </label>
+                        {/* Map Container */}
+                        <div className="relative">
+                            <div
+                                ref={mapContainerRef}
+                                className="w-full h-64 rounded-xl overflow-hidden border border-gray-200"
+                            />
+                            <div className="absolute bottom-3 left-3 bg-white px-3 py-2 rounded-lg shadow text-sm">
+                                <i className="fa-solid fa-location-dot mr-2 text-black"></i>
+                                {isGeocodingLoading ? (
+                                    <span className="text-gray-400">Detecting...</span>
+                                ) : (
+                                    <span className="font-medium">{locationArea || 'Click or drag to set'}</span>
+                                )}
                             </div>
                         </div>
 
-                        {isTemporary && (
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">
-                                        Start Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={dateStart}
-                                        onChange={(e) => setDateStart(e.target.value)}
-                                        className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">
-                                        End Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={dateEnd}
-                                        onChange={(e) => setDateEnd(e.target.value)}
-                                        className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-                                    />
-                                </div>
-                            </div>
-                        )}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                Area (auto-detected)
+                            </label>
+                            <input
+                                type="text"
+                                value={locationArea}
+                                onChange={(e) => setLocationArea(e.target.value)}
+                                placeholder="Will be filled automatically"
+                                className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Edit if the auto-detection isn't accurate</p>
+                        </div>
 
                         <button
                             onClick={() => setStep(2)}
-                            disabled={!name}
+                            disabled={!name || !locationArea}
                             className="w-full pl-btn pl-btn-primary disabled:opacity-50"
                         >
                             Continue <i className="fa-solid fa-arrow-right ml-2"></i>
@@ -236,79 +391,43 @@ export default function NewLocationPage() {
                     </div>
                 )}
 
-                {/* Step 2: Session Type */}
+                {/* Step 2: Session Type & Venues */}
                 {step === 2 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-black mb-2">How will you meet?</h2>
-                            <p className="text-gray-500">Choose if you'll meet in person, online, or both.</p>
+                            <h2 className="text-2xl font-black mb-2">How Will You Meet?</h2>
+                            <p className="text-gray-500">Choose meeting type and add venue options.</p>
                         </div>
 
+                        {/* Session Type Selection */}
                         <div className="space-y-3">
-                            <button
-                                onClick={() => setSessionType('in_person')}
-                                className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${sessionType === 'in_person'
-                                    ? 'border-black bg-gray-50'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                            >
-                                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mr-4">
-                                    <i className="fa-solid fa-utensils text-xl"></i>
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-bold">In-Person Only</p>
-                                    <p className="text-sm text-gray-500">Meet at a cafe or restaurant</p>
-                                </div>
-                                {sessionType === 'in_person' && (
-                                    <i className="fa-solid fa-check text-green-500"></i>
-                                )}
-                            </button>
-
-                            <button
-                                onClick={() => setSessionType('online')}
-                                className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${sessionType === 'online'
-                                    ? 'border-black bg-gray-50'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                            >
-                                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mr-4">
-                                    <i className="fa-solid fa-video text-xl"></i>
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-bold">Online Only</p>
-                                    <p className="text-sm text-gray-500">Connect via Google Meet</p>
-                                </div>
-                                {sessionType === 'online' && (
-                                    <i className="fa-solid fa-check text-green-500"></i>
-                                )}
-                            </button>
-
-                            <button
-                                onClick={() => setSessionType('both')}
-                                className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${sessionType === 'both'
-                                    ? 'border-black bg-gray-50'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                            >
-                                <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mr-4">
-                                    <i className="fa-solid fa-people-arrows text-xl"></i>
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-bold">Both Options</p>
-                                    <p className="text-sm text-gray-500">Let guests choose</p>
-                                </div>
-                                {sessionType === 'both' && (
-                                    <i className="fa-solid fa-check text-green-500"></i>
-                                )}
-                            </button>
+                            {[
+                                { type: 'in_person', icon: 'fa-utensils', color: 'bg-green-100 text-green-600', label: 'In-Person Only', desc: 'Meet at a cafe or restaurant' },
+                                { type: 'online', icon: 'fa-video', color: 'bg-blue-100 text-blue-600', label: 'Online Only', desc: 'Connect via video call' },
+                                { type: 'both', icon: 'fa-people-arrows', color: 'bg-purple-100 text-purple-600', label: 'Both Options', desc: 'Let guests choose' },
+                            ].map(opt => (
+                                <button
+                                    key={opt.type}
+                                    onClick={() => setSessionType(opt.type as typeof sessionType)}
+                                    className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${sessionType === opt.type ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                >
+                                    <div className={`w-12 h-12 ${opt.color} rounded-xl flex items-center justify-center mr-4`}>
+                                        <i className={`fa-solid ${opt.icon} text-xl`}></i>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-bold">{opt.label}</p>
+                                        <p className="text-sm text-gray-500">{opt.desc}</p>
+                                    </div>
+                                    {sessionType === opt.type && <i className="fa-solid fa-check text-green-500"></i>}
+                                </button>
+                            ))}
                         </div>
 
                         {/* Meet Link for online */}
                         {(sessionType === 'online' || sessionType === 'both') && (
                             <div className="bg-blue-50 p-4 rounded-xl">
                                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    <i className="fa-brands fa-google mr-2"></i>
-                                    Google Meet Link
+                                    <i className="fa-brands fa-google mr-2"></i>Video Call Link
                                 </label>
                                 <input
                                     type="url"
@@ -320,64 +439,92 @@ export default function NewLocationPage() {
                             </div>
                         )}
 
-                        {/* Venue options for in-person */}
+                        {/* Venue Options for in-person */}
                         {(sessionType === 'in_person' || sessionType === 'both') && (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">
-                                        Area
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={locationArea}
-                                        onChange={(e) => setLocationArea(e.target.value)}
-                                        placeholder="e.g., Shibuya, Tokyo"
-                                        className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-                                    />
-                                </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-3">
+                                    Venue Options (up to 3)
+                                    <span className="font-normal text-gray-400 ml-2">within 3km</span>
+                                </label>
 
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-3">Venue Preference</label>
-                                    <div className="space-y-2">
-                                        {defaultVenues.map(venue => (
-                                            <button
-                                                key={venue.id}
-                                                onClick={() => setVenueType(venue.id)}
-                                                className={`w-full p-3 rounded-xl border-2 text-left transition flex items-center ${venueType === venue.id
-                                                    ? 'border-black bg-gray-50'
-                                                    : 'border-gray-200 hover:border-gray-300'
-                                                    }`}
-                                            >
-                                                <div className={`w-10 h-10 ${venue.color} rounded-lg flex items-center justify-center mr-3`}>
-                                                    <i className={`fa-solid ${venue.icon}`}></i>
+                                {/* Existing venues */}
+                                <div className="space-y-2 mb-3">
+                                    {venues.map((venue, idx) => (
+                                        <div key={venue.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                            <div className="flex items-center">
+                                                <div className="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mr-3 text-sm font-bold">
+                                                    {idx + 1}
                                                 </div>
-                                                <div className="flex-1">
-                                                    <p className="font-bold text-sm">{venue.name}</p>
-                                                    <p className="text-xs text-gray-500">{venue.description}</p>
-                                                </div>
-                                                {venueType === venue.id && (
-                                                    <i className="fa-solid fa-check text-green-500"></i>
-                                                )}
+                                                <span className="font-medium">{venue.name}</span>
+                                            </div>
+                                            <button onClick={() => removeVenue(venue.id)} className="text-red-500 hover:text-red-700">
+                                                <i className="fa-solid fa-trash"></i>
                                             </button>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    ))}
                                 </div>
 
-                                {venueType === 'specific' && (
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">
-                                            Venue Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={specificLocation}
-                                            onChange={(e) => setSpecificLocation(e.target.value)}
-                                            placeholder="e.g., Starbucks Shibuya"
-                                            className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-                                        />
-                                    </div>
+                                {/* Add venue */}
+                                {venues.length < 3 && (
+                                    isAddingVenue ? (
+                                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 space-y-3">
+                                            <input
+                                                type="text"
+                                                value={newVenueName}
+                                                onChange={(e) => setNewVenueName(e.target.value)}
+                                                placeholder="Venue name (e.g., Starbucks Shibuya)"
+                                                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                                autoFocus
+                                            />
+                                            <p className="text-xs text-gray-500">
+                                                <i className="fa-solid fa-info-circle mr-1"></i>
+                                                For now, venues share the central location. Map pin selection coming soon!
+                                            </p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        if (newVenueName.trim()) {
+                                                            setVenues([...venues, {
+                                                                id: `venue_${Date.now()}`,
+                                                                name: newVenueName.trim(),
+                                                                lat: centralLat,
+                                                                lng: centralLng,
+                                                            }])
+                                                            setNewVenueName('')
+                                                            setIsAddingVenue(false)
+                                                        }
+                                                    }}
+                                                    disabled={!newVenueName.trim()}
+                                                    className="flex-1 py-2 bg-black text-white rounded-lg font-bold disabled:opacity-50"
+                                                >
+                                                    Add Venue
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setIsAddingVenue(false)
+                                                        setNewVenueName('')
+                                                    }}
+                                                    className="px-4 py-2 text-gray-500 hover:text-gray-700"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setIsAddingVenue(true)}
+                                            className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-gray-400 hover:text-gray-700 transition"
+                                        >
+                                            <i className="fa-solid fa-plus mr-2"></i>
+                                            Add Venue Option
+                                        </button>
+                                    )
                                 )}
-                            </>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm">{error}</div>
                         )}
 
                         <div className="flex justify-between pt-4">
@@ -386,7 +533,7 @@ export default function NewLocationPage() {
                             </button>
                             <button
                                 onClick={() => setStep(3)}
-                                disabled={(sessionType !== 'online' && !locationArea) || ((sessionType === 'online' || sessionType === 'both') && !meetLink)}
+                                disabled={(sessionType !== 'online' && venues.length === 0) || ((sessionType === 'online' || sessionType === 'both') && !meetLink)}
                                 className="pl-btn pl-btn-primary disabled:opacity-50"
                             >
                                 Continue <i className="fa-solid fa-arrow-right ml-2"></i>
@@ -399,14 +546,12 @@ export default function NewLocationPage() {
                 {step === 3 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-black mb-2">Set your price</h2>
+                            <h2 className="text-2xl font-black mb-2">Set Your Price</h2>
                             <p className="text-gray-500">Choose a fair price for your time.</p>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">
-                                Price (¥)
-                            </label>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Price (¥)</label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">¥</span>
                                 <input
@@ -426,18 +571,13 @@ export default function NewLocationPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">
-                                Duration
-                            </label>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Duration</label>
                             <div className="grid grid-cols-4 gap-2">
                                 {durations.map(d => (
                                     <button
                                         key={d}
                                         onClick={() => setDuration(d)}
-                                        className={`py-3 rounded-xl font-bold transition ${duration === d
-                                            ? 'bg-black text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
+                                        className={`py-3 rounded-xl font-bold transition ${duration === d ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                                     >
                                         {d}min
                                     </button>
@@ -445,31 +585,133 @@ export default function NewLocationPage() {
                             </div>
                         </div>
 
-                        {error && (
-                            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm">
-                                {error}
-                            </div>
-                        )}
-
                         <div className="flex justify-between pt-4">
                             <button onClick={() => setStep(2)} className="pl-btn pl-btn-secondary">
                                 <i className="fa-solid fa-arrow-left mr-2"></i> Back
                             </button>
+                            <button onClick={() => setStep(4)} className="pl-btn pl-btn-primary">
+                                Continue <i className="fa-solid fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 4: Availability Schedule */}
+                {step === 4 && (
+                    <div className="space-y-6">
+                        <div>
+                            <h2 className="text-2xl font-black mb-2">Set Your Availability</h2>
+                            <p className="text-gray-500">Choose when you're available to host.</p>
+                        </div>
+
+                        {/* Date Range */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Start Date</label>
+                                <input
+                                    type="date"
+                                    value={validFrom}
+                                    onChange={(e) => setValidFrom(e.target.value)}
+                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">End Date</label>
+                                <input
+                                    type="date"
+                                    value={validUntil}
+                                    onChange={(e) => setValidUntil(e.target.value)}
+                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Weekly Schedule Grid */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-3">
+                                Weekly Schedule
+                                <span className="font-normal text-gray-400 ml-2">(click to toggle)</span>
+                            </label>
+                            <div className="overflow-x-auto">
+                                <div className="inline-grid gap-1" style={{ gridTemplateColumns: 'auto repeat(7, 1fr)' }}>
+                                    {/* Header row */}
+                                    <div></div>
+                                    {DAYS.map((day, idx) => (
+                                        <div key={day} className="text-center text-xs font-bold text-gray-500 py-2 min-w-[40px]">
+                                            {day}
+                                        </div>
+                                    ))}
+
+                                    {/* Time rows */}
+                                    {TIME_SLOTS.map(time => (
+                                        <>
+                                            <div key={`label-${time}`} className="text-xs text-gray-400 py-2 pr-2 text-right">
+                                                {time}
+                                            </div>
+                                            {DAYS.map((_, dayIdx) => (
+                                                <button
+                                                    key={`${dayIdx}-${time}`}
+                                                    onClick={() => toggleSlot(dayIdx, time)}
+                                                    className={`w-10 h-10 rounded-lg transition ${isSlotSelected(dayIdx, time)
+                                                        ? 'bg-green-500 text-white'
+                                                        : 'bg-gray-100 hover:bg-gray-200'
+                                                        }`}
+                                                >
+                                                    {isSlotSelected(dayIdx, time) && <i className="fa-solid fa-check text-xs"></i>}
+                                                </button>
+                                            ))}
+                                        </>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Blocked Dates (simplified) */}
+                        {validFrom && validUntil && weeklySlots.length > 0 && (
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-3">
+                                    Block Specific Dates
+                                    <span className="font-normal text-gray-400 ml-2">(click to toggle off)</span>
+                                </label>
+                                <div className="bg-gray-50 rounded-xl p-4 max-h-48 overflow-y-auto">
+                                    <div className="flex flex-wrap gap-2">
+                                        {generateDateRange().filter(d => isDateAvailable(d)).slice(0, 30).map(date => (
+                                            <button
+                                                key={date}
+                                                onClick={() => toggleBlockedDate(date)}
+                                                className={`px-3 py-1 rounded-full text-sm font-medium transition ${blockedDates.includes(date)
+                                                    ? 'bg-red-100 text-red-700 line-through'
+                                                    : 'bg-green-100 text-green-700'
+                                                    }`}
+                                            >
+                                                {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {generateDateRange().filter(d => isDateAvailable(d)).length > 30 && (
+                                        <p className="text-xs text-gray-400 mt-2">Showing first 30 available dates</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm">{error}</div>
+                        )}
+
+                        <div className="flex justify-between pt-4">
+                            <button onClick={() => setStep(3)} className="pl-btn pl-btn-secondary">
+                                <i className="fa-solid fa-arrow-left mr-2"></i> Back
+                            </button>
                             <button
                                 onClick={handleSubmit}
-                                disabled={loading}
+                                disabled={loading || weeklySlots.length === 0}
                                 className="pl-btn pl-btn-success disabled:opacity-50"
                             >
                                 {loading ? (
-                                    <>
-                                        <i className="fa-solid fa-spinner fa-spin mr-2"></i>
-                                        Creating...
-                                    </>
+                                    <><i className="fa-solid fa-spinner fa-spin mr-2"></i>Creating...</>
                                 ) : (
-                                    <>
-                                        <i className="fa-solid fa-check mr-2"></i>
-                                        Create Location
-                                    </>
+                                    <><i className="fa-solid fa-check mr-2"></i>Create Location</>
                                 )}
                             </button>
                         </div>

@@ -67,11 +67,61 @@ export async function POST(request: NextRequest) {
         // Create onboarding link
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
         console.log('[hosts/onboard] Creating onboarding link with baseUrl:', baseUrl)
-        const onboardingUrl = await createConnectOnboardingLink(
-            stripeAccountId,
-            `${baseUrl}/host/dashboard?onboarding=complete`,
-            `${baseUrl}/host/onboard?refresh=true`
-        )
+
+        let onboardingUrl: string;
+        try {
+            onboardingUrl = await createConnectOnboardingLink(
+                stripeAccountId,
+                `${baseUrl}/host/dashboard?onboarding=complete`,
+                `${baseUrl}/host/onboard?refresh=true`
+            )
+        } catch (linkError: any) {
+            console.warn('[hosts/onboard] Initial link creation failed:', linkError.message)
+
+            // Check if error is due to invalid account (e.g. environment mismatch or deleted account)
+            // Stripe errors for non-existent accounts usually contain "No such account" or "does not exist"
+            if (linkError.message?.includes('No such account') ||
+                linkError.message?.includes('does not exist') ||
+                linkError.message?.includes('not connected to your platform')) {
+
+                console.log('[hosts/onboard] Detected invalid account ID, creating new connected account...')
+
+                // 1. Create NEW connected account
+                const newStripeAccountId = await createConnectedAccount(user.email!)
+                console.log('[hosts/onboard] Created NEW Stripe account:', newStripeAccountId)
+
+                // 2. Update database with new ID
+                if (existingHost) {
+                    const { error: updateError } = await supabase
+                        .from('hosts')
+                        .update({ stripe_account_id: newStripeAccountId } as any)
+                        .eq('id', existingHost.id)
+
+                    if (updateError) {
+                        throw new Error(`Failed to update host with new Stripe ID: ${updateError.message}`)
+                    }
+                } else {
+                    // Should theoretically not reach here if logic follows, but for safety
+                    const hostData = {
+                        user_id: user.id,
+                        stripe_account_id: newStripeAccountId,
+                    }
+                    await supabase.from('hosts').insert(hostData as any)
+                }
+
+                // 3. Retry creating onboarding link with NEW ID
+                onboardingUrl = await createConnectOnboardingLink(
+                    newStripeAccountId,
+                    `${baseUrl}/host/dashboard?onboarding=complete`,
+                    `${baseUrl}/host/onboard?refresh=true`
+                )
+                console.log('[hosts/onboard] Retry successful, new link created')
+            } else {
+                // If it's some other error, rethrow it
+                throw linkError
+            }
+        }
+
         console.log('[hosts/onboard] Onboarding URL created:', onboardingUrl)
 
         return NextResponse.json({ url: onboardingUrl })

@@ -151,8 +151,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: validation.error }, { status: 400 })
         }
 
-        // Insert with authenticated host_id (not from request body!)
-        const { data, error } = await supabase
+        // Insert the host_location with authenticated host_id
+        const { data: location, error } = await supabase
             .from('host_locations')
             .insert({
                 host_id: host.id,
@@ -163,10 +163,53 @@ export async function POST(request: NextRequest) {
             .single()
 
         if (error) {
+            console.error('[host-locations] Insert error:', error.message)
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
-        return NextResponse.json(data, { status: 201 })
+
+        // If availability data is provided, create slots
+        if (body.availability && body.availability.weekly && Array.isArray(body.availability.weekly)) {
+            const slotsToInsert = body.availability.weekly.map((slot: any) => ({
+                host_location_id: location.id,
+                day_of_week: slot.day,
+                start_time: slot.startTime || slot.start_time,
+                end_time: slot.endTime || slot.end_time,
+                valid_from: body.availability.valid_from || null,
+                valid_until: body.availability.valid_until || null,
+            }))
+
+            if (slotsToInsert.length > 0) {
+                const { error: slotsError } = await supabase
+                    .from('availability_slots')
+                    .insert(slotsToInsert)
+
+                if (slotsError) {
+                    console.error('[host-locations] Slots insert error:', slotsError.message)
+                    // Don't fail the whole request, just log it
+                }
+            }
+        }
+
+        // If blocked dates are provided, create them
+        if (body.blocked_dates && Array.isArray(body.blocked_dates) && body.blocked_dates.length > 0) {
+            const blockedToInsert = body.blocked_dates.map((date: string) => ({
+                host_location_id: location.id,
+                date: date,
+            }))
+
+            const { error: blockedError } = await supabase
+                .from('unavailable_dates')
+                .insert(blockedToInsert)
+
+            if (blockedError) {
+                console.error('[host-locations] Blocked dates insert error:', blockedError.message)
+                // Don't fail the whole request, just log it
+            }
+        }
+
+        return NextResponse.json(location, { status: 201 })
     } catch (err: any) {
+        console.error('[host-locations] Unexpected error:', err.message)
         return NextResponse.json({ error: err.message }, { status: 500 })
     }
 }
