@@ -10,9 +10,11 @@ interface HeaderProps {
     transparent?: boolean
     /** Additional class names */
     className?: string
+    /** Show "Become a Host" button (for search page) */
+    showHostButton?: boolean
 }
 
-export default function Header({ transparent = false, className = '' }: HeaderProps) {
+export default function Header({ transparent = false, className = '', showHostButton = false }: HeaderProps) {
     const router = useRouter()
     const { t } = useTranslation()
     const { user, loading, signOut } = useAuth()
@@ -36,6 +38,18 @@ export default function Header({ transparent = false, className = '' }: HeaderPr
                 {!loading && (
                     user ? (
                         <>
+                            {showHostButton && (
+                                <Link
+                                    href="/profile?tab=host"
+                                    className={`text-xs font-bold px-3 py-1.5 rounded-full transition ${transparent
+                                            ? 'border border-white/30 hover:bg-white hover:text-black'
+                                            : 'bg-green-600 text-white hover:bg-green-700'
+                                        }`}
+                                >
+                                    <i className="fa-solid fa-plus mr-1"></i>
+                                    Host
+                                </Link>
+                            )}
                             <Link
                                 href="/profile"
                                 className={`p-2 rounded-full hover:bg-gray-100 transition ${transparent ? 'hover:bg-white/20' : ''}`}
@@ -55,8 +69,8 @@ export default function Header({ transparent = false, className = '' }: HeaderPr
                         <Link
                             href="/auth/login"
                             className={`text-sm font-bold px-4 py-2 rounded-full transition ${transparent
-                                    ? 'border border-white/30 hover:bg-white hover:text-black'
-                                    : 'bg-black text-white hover:bg-gray-800'
+                                ? 'border border-white/30 hover:bg-white hover:text-black'
+                                : 'bg-black text-white hover:bg-gray-800'
                                 }`}
                         >
                             {t('nav.login')}

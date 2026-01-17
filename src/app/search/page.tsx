@@ -218,7 +218,7 @@ export default function SearchPage() {
 
             {/* Header - transparent in map mode */}
             <div className={`absolute top-0 left-0 w-full z-30 ${viewMode === 'map' ? '[&_*]:!text-gray-800' : ''}`}>
-                <Header transparent={viewMode === 'map'} />
+                <Header transparent={viewMode === 'map'} showHostButton />
             </div>
 
             {/* Search & Filters */}

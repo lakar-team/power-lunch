@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import { useTranslation } from '@/lib/i18n/translations'
 import { getBookings } from '@/lib/api/bookings'
@@ -10,17 +10,25 @@ import { Booking } from '@/lib/types/supabase'
 
 import { useAuth } from '@/components/AuthProvider'
 import Header from '@/components/Header'
+import HostingTab from '@/components/HostingTab'
 
 export default function ProfilePage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const { t } = useTranslation()
     const { user, loading, signOut } = useAuth()
     const [activeTab, setActiveTab] = useState<'guest' | 'host'>('guest')
-    // const [user, setUser] = useState<any>(null) // handled by context
-    // const [loading, setLoading] = useState(true) // handled by context
     const [guestBookings, setGuestBookings] = useState<Booking[]>([])
     const [hostBookings, setHostBookings] = useState<Booking[]>([])
     const [bookingsLoading, setBookingsLoading] = useState(false)
+
+    // Handle ?tab=host query param
+    useEffect(() => {
+        const tab = searchParams.get('tab')
+        if (tab === 'host') {
+            setActiveTab('host')
+        }
+    }, [searchParams])
 
     useEffect(() => {
         if (!loading && !user) {
@@ -216,59 +224,7 @@ export default function ProfilePage() {
 
                         {/* HOST VIEW */}
                         {activeTab === 'host' && (
-                            <div className="space-y-4 animate-fade-in-up">
-                                {/* Earnings Card */}
-                                <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl p-5 text-white shadow-lg">
-                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Balance</h3>
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-3xl font-bold">¥0</span>
-                                        <button className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-[10px] font-bold transition">
-                                            Cash Out
-                                        </button>
-                                    </div>
-                                    <div className="mt-4 pt-3 border-t border-white/10 flex text-[10px] text-gray-400">
-                                        <span className="mr-3"><i className="fa-solid fa-arrow-up mr-1 text-green-400"></i> ¥0 this week</span>
-                                    </div>
-                                </div>
-
-                                {currentBookings.length === 0 ? (
-                                    <>
-                                        <div className="flex justify-between items-end px-1 mt-6">
-                                            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Upcoming Sessions</h2>
-                                        </div>
-                                        <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl">
-                                            <p className="text-sm text-gray-400 font-bold">No upcoming sessions</p>
-                                            <Link href="/host/onboard" className="mt-2 inline-block text-xs text-black underline font-bold">
-                                                Become a Host
-                                            </Link>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="flex justify-between items-end px-1 mt-6">
-                                            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Upcoming Sessions</h2>
-                                        </div>
-                                        {currentBookings.filter(b => b.status !== 'completed' && b.status !== 'cancelled').map(booking => (
-                                            <div key={booking.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <div>
-                                                        <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded">
-                                                            {formatDate(booking.booking_date)} at {booking.start_time}
-                                                        </span>
-                                                        <h3 className="font-bold text-lg mt-2">{booking.listing?.title || 'Session'}</h3>
-                                                        <p className="text-xs text-gray-500">with {booking.guest?.full_name || 'Guest'}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex space-x-2 mt-4">
-                                                    <Link href={`/host/sessions/${booking.id}`} className="flex-1 bg-gray-900 text-white text-xs font-bold py-2 rounded-lg text-center hover:bg-black transition">
-                                                        View Details
-                                                    </Link>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                            </div>
+                            <HostingTab />
                         )}
                     </>
                 )}
