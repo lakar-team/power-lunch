@@ -8,28 +8,24 @@ import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { getBookings } from '@/lib/api/bookings'
 import { Booking } from '@/lib/types/supabase'
 
+import { useAuth } from '@/components/AuthProvider'
+
 export default function ProfilePage() {
     const router = useRouter()
     const { t } = useTranslation()
+    const { user, loading } = useAuth()
     const [activeTab, setActiveTab] = useState<'guest' | 'host'>('guest')
-    const [user, setUser] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
+    // const [user, setUser] = useState<any>(null) // handled by context
+    // const [loading, setLoading] = useState(true) // handled by context
     const [guestBookings, setGuestBookings] = useState<Booking[]>([])
     const [hostBookings, setHostBookings] = useState<Booking[]>([])
     const [bookingsLoading, setBookingsLoading] = useState(false)
 
     useEffect(() => {
-        async function getUser() {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) {
-                router.push('/auth/login?redirect=/profile')
-                return
-            }
-            setUser(user)
-            setLoading(false)
+        if (!loading && !user) {
+            router.push('/auth/login?redirect=/profile')
         }
-        getUser()
-    }, [router])
+    }, [user, loading, router])
 
     // Fetch bookings when tab changes
     useEffect(() => {
@@ -74,6 +70,16 @@ export default function ProfilePage() {
                     <Link href="/" className="pl-logo">POWER<span>LUNCH</span>.</Link>
                     <div className="flex items-center space-x-3">
                         <LanguageToggle />
+                        <button
+                            onClick={async () => {
+                                await signOut()
+                                router.push('/')
+                            }}
+                            className="text-gray-400 hover:text-black"
+                            title="Log Out"
+                        >
+                            <i className="fa-solid fa-right-from-bracket text-xl"></i>
+                        </button>
                         <button onClick={() => router.push('/settings')} className="text-gray-400 hover:text-black">
                             <i className="fa-solid fa-gear text-xl"></i>
                         </button>

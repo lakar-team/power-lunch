@@ -6,11 +6,14 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 
+import { useAuth } from '@/components/AuthProvider'
+
 export default function SettingsPage() {
     const router = useRouter()
     const { t, language, setLanguage } = useTranslation()
-    const [user, setUser] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
+    const { user, loading, signOut } = useAuth()
+    // const [user, setUser] = useState<any>(null)
+    // const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -20,20 +23,13 @@ export default function SettingsPage() {
     const [marketingEmails, setMarketingEmails] = useState(false)
 
     useEffect(() => {
-        async function getUser() {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) {
-                router.push('/auth/login?redirect=/settings')
-                return
-            }
-            setUser(user)
-            setLoading(false)
+        if (!loading && !user) {
+            router.push('/auth/login?redirect=/settings')
         }
-        getUser()
-    }, [router])
+    }, [user, loading, router])
 
     const handleLogout = async () => {
-        await supabase.auth.signOut()
+        await signOut()
         router.push('/')
     }
 
