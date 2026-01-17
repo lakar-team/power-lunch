@@ -111,7 +111,7 @@ export default function NewLocationPage() {
     useEffect(() => {
         if (step !== 1 || !mapContainerRef.current || mapRef.current) return
 
-const initMap = async () => {
+        const initMap = async () => {
             try {
                 // Load MapLibre CSS via link tag (avoids build issues)
                 if (!document.getElementById('maplibre-css')) {
@@ -136,31 +136,30 @@ const initMap = async () => {
                     console.log('Map loaded successfully')
                 })
 
-            // Central marker
-            const marker = new maplibregl.Marker({ color: '#000', draggable: true })
-                .setLngLat([centralLng, centralLat])
-                .addTo(map)
+                // Central marker
+                const marker = new maplibregl.Marker({ color: '#000', draggable: true })
+                    .setLngLat([centralLng, centralLat])
+                    .addTo(map)
 
-            marker.on('dragend', () => {
-                const lngLat = marker.getLngLat()
-                setCentralLat(lngLat.lat)
-                setCentralLng(lngLat.lng)
-                reverseGeocode(lngLat.lat, lngLat.lng)
-            })
+                marker.on('dragend', () => {
+                    const lngLat = marker.getLngLat()
+                    setCentralLat(lngLat.lat)
+                    setCentralLng(lngLat.lng)
+                    reverseGeocode(lngLat.lat, lngLat.lng)
+                })
 
-            // Click to move marker
-            map.on('click', (e) => {
-                marker.setLngLat([e.lngLat.lng, e.lngLat.lat])
-                setCentralLat(e.lngLat.lat)
-                setCentralLng(e.lngLat.lng)
-                reverseGeocode(e.lngLat.lat, e.lngLat.lng)
-            })
+                // Click to move marker
+                map.on('click', (e) => {
+                    marker.setLngLat([e.lngLat.lng, e.lngLat.lat])
+                    setCentralLat(e.lngLat.lat)
+                    setCentralLng(e.lngLat.lng)
+                    reverseGeocode(e.lngLat.lat, e.lngLat.lng)
+                })
 
-mapRef.current = map
+                mapRef.current = map
 
                 // Initial geocode
                 reverseGeocode(centralLat, centralLng)
-            })
             } catch (error) {
                 console.error('Error initializing map:', error)
                 setError('Failed to load map. Please refresh the page.')
@@ -372,7 +371,7 @@ mapRef.current = map
 
                         {/* Map Container */}
                         <div className="relative">
-<div className="relative">
+                            <div className="relative">
                                 <div
                                     ref={mapContainerRef}
                                     className="w-full h-64 rounded-xl overflow-hidden border border-gray-200 bg-gray-100"
