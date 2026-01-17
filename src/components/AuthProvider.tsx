@@ -26,6 +26,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter()
 
     useEffect(() => {
+        // Fetch existing session on mount - this is the key fix for login persistence
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                setSession(session)
+                setUser(session.user)
+            }
+            setLoading(false)
+        })
+
+        // Listen for auth state changes (login, logout, token refresh)
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
@@ -36,7 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setSession(null)
                 setUser(null)
             }
-            setLoading(false)
             router.refresh()
         })
 

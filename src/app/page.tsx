@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/components/AuthProvider'
 
 interface PlatformStats {
     users: number
@@ -14,6 +15,7 @@ interface PlatformStats {
 
 export default function HomePage() {
     const { t, language } = useTranslation()
+    const { user, loading, signOut } = useAuth()
     const [stats, setStats] = useState<PlatformStats>({ users: 0, listings: 0, sessions: 0, hosts: 0, payouts: 0 })
 
     // Fetch platform stats
@@ -84,12 +86,31 @@ export default function HomePage() {
                     </div>
                     <div className="flex items-center space-x-3">
                         <LanguageToggle />
-                        <Link
-                            href="/auth/login"
-                            className="text-sm font-bold border border-white/30 px-4 py-2 rounded-full hover:bg-white hover:text-black transition"
-                        >
-                            {t('nav.login')}
-                        </Link>
+                        {!loading && (
+                            user ? (
+                                <>
+                                    <Link
+                                        href="/profile"
+                                        className="text-sm font-bold text-white hover:text-gray-200 transition"
+                                    >
+                                        {t('nav.profile')}
+                                    </Link>
+                                    <button
+                                        onClick={() => signOut()}
+                                        className="text-sm font-bold border border-white/30 px-4 py-2 rounded-full hover:bg-white hover:text-black transition"
+                                    >
+                                        {t('nav.logout')}
+                                    </button>
+                                </>
+                            ) : (
+                                <Link
+                                    href="/auth/login"
+                                    className="text-sm font-bold border border-white/30 px-4 py-2 rounded-full hover:bg-white hover:text-black transition"
+                                >
+                                    {t('nav.login')}
+                                </Link>
+                            )
+                        )}
                     </div>
                 </nav>
 
