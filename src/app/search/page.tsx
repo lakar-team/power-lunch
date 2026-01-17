@@ -218,7 +218,7 @@ export default function SearchPage() {
 
             {/* Header */}
             <div className="absolute top-0 left-0 w-full z-30">
-                <Header className="bg-transparent" />
+                <Header className={viewMode === 'map' ? "!bg-transparent !border-none" : ""} />
             </div>
 
             {/* Search & Filters */}
