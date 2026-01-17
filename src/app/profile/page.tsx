@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
+import { useTranslation } from '@/lib/i18n/translations'
 import { getBookings } from '@/lib/api/bookings'
 import { Booking } from '@/lib/types/supabase'
 
 import { useAuth } from '@/components/AuthProvider'
+import Header from '@/components/Header'
 
 export default function ProfilePage() {
     const router = useRouter()
@@ -68,26 +69,16 @@ export default function ProfilePage() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
-            {/* Header / Profile Summary */}
-            <header className="bg-white px-6 pt-4 pb-6 border-b border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                    <Link href="/" className="pl-logo">POWER<span>LUNCH</span>.</Link>
-                    <div className="flex items-center space-x-3">
-                        <LanguageToggle />
-                        <button
-                            onClick={async () => {
-                                await signOut()
-                                router.push('/')
-                            }}
-                            className="text-gray-400 hover:text-black"
-                            title="Log Out"
-                        >
-                            <i className="fa-solid fa-right-from-bracket text-xl"></i>
-                        </button>
-                        <button onClick={() => router.push('/settings')} className="text-gray-400 hover:text-black">
-                            <i className="fa-solid fa-gear text-xl"></i>
-                        </button>
-                    </div>
+            {/* Header */}
+            <Header />
+
+            {/* Profile Summary */}
+            <div className="bg-white px-6 pb-6 border-b border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-bold text-gray-500">Profile</span>
+                    <button onClick={() => router.push('/settings')} className="text-gray-400 hover:text-black">
+                        <i className="fa-solid fa-gear text-lg"></i>
+                    </button>
                 </div>
 
                 <div className="flex items-center">
@@ -105,7 +96,7 @@ export default function ProfilePage() {
                         </div>
                     </div>
                 </div>
-            </header>
+            </div>
 
             {/* Tabs */}
             <div className="bg-white px-6 border-b border-gray-200 sticky top-0 z-20">

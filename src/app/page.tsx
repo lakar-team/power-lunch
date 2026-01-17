@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
@@ -14,9 +15,17 @@ interface PlatformStats {
 }
 
 export default function HomePage() {
+    const router = useRouter()
     const { t, language } = useTranslation()
     const { user, loading, signOut } = useAuth()
     const [stats, setStats] = useState<PlatformStats>({ users: 0, listings: 0, sessions: 0, hosts: 0, payouts: 0 })
+
+    // Redirect logged-in users to search page
+    useEffect(() => {
+        if (!loading && user) {
+            router.replace('/search')
+        }
+    }, [user, loading, router])
 
     // Fetch platform stats
     useEffect(() => {

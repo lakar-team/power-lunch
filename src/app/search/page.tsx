@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { useEffect, useRef, useState } from 'react'
 import { HostLocation } from '@/lib/types/supabase'
+import Header from '@/components/Header'
 
 import { categories } from '@/lib/categories'
 
@@ -216,28 +217,8 @@ export default function SearchPage() {
             {viewMode === 'map' && <div ref={mapRef} className="absolute inset-0 z-0" />}
 
             {/* Header */}
-            <div className="absolute top-0 left-0 w-full z-30 px-4 py-3 flex justify-between items-center">
-                <Link href="/" className="pl-logo">
-                    POWER<span>LUNCH</span>.
-                </Link>
-                <div className="flex items-center gap-2">
-                    {/* View Toggle */}
-                    <div className="flex bg-white rounded-full shadow-sm overflow-hidden">
-                        <button
-                            onClick={() => setViewMode('map')}
-                            className={`px-3 py-1.5 text-xs font-bold ${viewMode === 'map' ? 'bg-black text-white' : 'text-gray-600'}`}
-                        >
-                            <i className="fa-solid fa-map"></i>
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`px-3 py-1.5 text-xs font-bold ${viewMode === 'list' ? 'bg-black text-white' : 'text-gray-600'}`}
-                        >
-                            <i className="fa-solid fa-list"></i>
-                        </button>
-                    </div>
-                    <LanguageToggle />
-                </div>
+            <div className="absolute top-0 left-0 w-full z-30">
+                <Header className="bg-transparent" />
             </div>
 
             {/* Search & Filters */}
