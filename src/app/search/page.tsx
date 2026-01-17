@@ -216,9 +216,9 @@ export default function SearchPage() {
             {/* Map Container (only show in map mode) */}
             {viewMode === 'map' && <div ref={mapRef} className="absolute inset-0 z-0" />}
 
-            {/* Header */}
-            <div className="absolute top-0 left-0 w-full z-30">
-                <Header className={viewMode === 'map' ? "!bg-transparent !border-none" : ""} />
+            {/* Header - transparent in map mode */}
+            <div className={`absolute top-0 left-0 w-full z-30 ${viewMode === 'map' ? '[&_*]:!text-gray-800' : ''}`}>
+                <Header transparent={viewMode === 'map'} />
             </div>
 
             {/* Search & Filters */}
