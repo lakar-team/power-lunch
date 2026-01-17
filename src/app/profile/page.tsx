@@ -13,7 +13,7 @@ import { useAuth } from '@/components/AuthProvider'
 export default function ProfilePage() {
     const router = useRouter()
     const { t } = useTranslation()
-    const { user, loading } = useAuth()
+    const { user, loading, signOut } = useAuth()
     const [activeTab, setActiveTab] = useState<'guest' | 'host'>('guest')
     // const [user, setUser] = useState<any>(null) // handled by context
     // const [loading, setLoading] = useState(true) // handled by context
