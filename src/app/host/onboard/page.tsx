@@ -7,7 +7,7 @@ import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { supabase } from '@/lib/supabase/client'
 import { categories, getCategoryById, Subcategory } from '@/lib/categories'
 
-type Step = 'intro' | 'profile' | 'topics' | 'stripe'
+type Step = 'intro' | 'profile' | 'topics' | 'complete'
 
 function OnboardContent() {
     const { t } = useTranslation()
@@ -23,7 +23,7 @@ function OnboardContent() {
     const [bio, setBio] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [selectedTopics, setSelectedTopics] = useState<string[]>([]) // Now stores subcategory IDs
-    const [termsAccepted, setTermsAccepted] = useState(false)
+    const [termsAccepted, setTermsAccepted] = useState(true) // Terms no longer required here
 
     // Get selected category object for subcategory display
     const activeCategory = selectedCategory ? getCategoryById(selectedCategory) : null
@@ -38,10 +38,8 @@ function OnboardContent() {
             }
             setUser(session.user)
 
-            // Check if coming back from Stripe (refresh)
-            if (searchParams.get('refresh') === 'true') {
-                setStep('stripe')
-            }
+            // Check if coming back from Stripe (refresh) - no longer needed
+            // if (searchParams.get('refresh') === 'true') { setStep('stripe') }
         }
         checkAuth()
     }, [router, searchParams])
@@ -54,38 +52,28 @@ function OnboardContent() {
         )
     }
 
-    const handleStartStripeOnboarding = async () => {
+    const handleCompleteOnboarding = async () => {
         setLoading(true)
         setError(null)
 
         try {
-            // First, update the profile with bio and topics
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .update({ bio })
-                .eq('id', user.id)
-
-            if (profileError) {
-                console.error('Profile update error:', profileError)
-            }
-
-            // Call API to start Stripe onboarding
+            // Create host profile (no Stripe required)
             const response = await fetch('/api/hosts/onboard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // Send auth cookies
+                credentials: 'include',
                 body: JSON.stringify({ bio, topics: selectedTopics }),
             })
 
             const data = await response.json()
 
             if (!response.ok) {
-                const errorMessage = data.details ? `${data.error}: ${data.details}` : data.error || 'Failed to start onboarding'
+                const errorMessage = data.details ? `${data.error}: ${data.details}` : data.error || 'Failed to create host profile'
                 throw new Error(errorMessage)
             }
 
-            // Redirect to Stripe
-            window.location.href = data.url
+            // Success! Redirect to create first pin
+            setStep('complete')
         } catch (err: any) {
             setError(err.message)
             setLoading(false)
@@ -231,10 +219,10 @@ function OnboardContent() {
                                                     onClick={() => canSelect && handleTopicToggle(topicKey)}
                                                     disabled={!canSelect}
                                                     className={`px-3 py-2 rounded-full text-sm font-medium transition ${isSelected
-                                                            ? 'bg-black text-white'
-                                                            : canSelect
-                                                                ? 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-200'
-                                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                        ? 'bg-black text-white'
+                                                        : canSelect
+                                                            ? 'bg-white text-gray-700 hover:bg-gray-200 border border-gray-200'
+                                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                                         }`}
                                                 >
                                                     {sub.label}
@@ -285,80 +273,56 @@ function OnboardContent() {
                     <i className="fa-solid fa-arrow-left mr-2"></i> Back
                 </button>
                 <button
-                    onClick={() => setStep('stripe')}
-                    disabled={selectedTopics.length === 0}
+                    onClick={handleCompleteOnboarding}
+                    disabled={selectedTopics.length === 0 || loading}
                     className="pl-btn pl-btn-primary disabled:opacity-50"
                 >
-                    Continue <i className="fa-solid fa-arrow-right ml-2"></i>
+                    {loading ? (
+                        <><i className="fa-solid fa-spinner fa-spin mr-2"></i> Creating...</>
+                    ) : (
+                        <>Complete <i className="fa-solid fa-check ml-2"></i></>
+                    )}
                 </button>
             </div>
         </div>
     )
 
-    const renderStripe = () => (
+    const renderComplete = () => (
         <div className="max-w-lg mx-auto text-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <i className="fa-brands fa-stripe text-white text-4xl"></i>
+            <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <i className="fa-solid fa-check text-white text-4xl"></i>
             </div>
-            <h2 className="text-2xl font-black mb-2">Set Up Payments</h2>
+            <h2 className="text-2xl font-black mb-2">You're All Set! 🎉</h2>
             <p className="text-gray-500 mb-8">
-                You'll be redirected to Stripe to securely set up your payout account. This only takes a few minutes.
+                Your host profile has been created. Now create your first pin to start accepting bookings.
             </p>
 
-            {/* Terms Acceptance */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 text-left">
-                <label className="flex items-start cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={termsAccepted}
-                        onChange={(e) => setTermsAccepted(e.target.checked)}
-                        className="mt-1 mr-3 w-5 h-5 rounded border-gray-300 text-black focus:ring-black"
-                    />
-                    <span className="text-sm text-gray-700">
-                        I have read and agree to the{' '}
-                        <Link href="/terms" target="_blank" className="text-blue-600 hover:underline font-medium">
-                            Terms of Service
-                        </Link>
-                        , including the platform fee structure, tax responsibilities, and limitation of liability.
-                        I understand that Power Lunch acts as an intermediary and I am responsible for my own tax obligations.
-                    </span>
-                </label>
+            <div className="bg-blue-50 rounded-xl p-4 mb-6 text-left">
+                <div className="flex items-start">
+                    <i className="fa-solid fa-info-circle text-blue-500 mt-1 mr-3"></i>
+                    <div>
+                        <p className="text-sm font-medium text-blue-700">Wallet Setup</p>
+                        <p className="text-xs text-blue-600 mt-1">
+                            You can set up your payment wallet later in Settings → Wallet. You'll need to complete this before accepting bookings.
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm">
-                    {error}
-                </div>
-            )}
-
-            <button
-                onClick={handleStartStripeOnboarding}
-                disabled={loading || !termsAccepted}
-                className="pl-btn pl-btn-success text-lg px-12 w-full mb-4 disabled:opacity-50"
+            <Link
+                href="/host/locations/new"
+                className="pl-btn pl-btn-primary text-lg px-12 w-full mb-4"
             >
-                {loading ? (
-                    <>
-                        <i className="fa-solid fa-spinner fa-spin mr-2"></i>
-                        Connecting to Stripe...
-                    </>
-                ) : (
-                    <>
-                        <i className="fa-brands fa-stripe-s mr-2"></i>
-                        Continue with Stripe
-                    </>
-                )}
-            </button>
+                <i className="fa-solid fa-map-pin mr-2"></i>
+                Create Your First Pin
+            </Link>
 
-            <button
-                onClick={() => setStep('topics')}
-                className="text-gray-500 hover:text-gray-700 text-sm"
+            <Link
+                href="/host/dashboard"
+                className="block text-gray-500 hover:text-gray-700 text-sm"
             >
-                <i className="fa-solid fa-arrow-left mr-1"></i> Go back
-            </button>
-
-            <p className="text-xs text-gray-400 mt-6">
-                Your information is securely handled by Stripe. Power Lunch never stores your banking details.
-            </p>
+                Go to Dashboard →
+            </Link>
         </div>
     )
 
@@ -407,7 +371,7 @@ function OnboardContent() {
                 {step === 'intro' && renderIntro()}
                 {step === 'profile' && renderProfile()}
                 {step === 'topics' && renderTopics()}
-                {step === 'stripe' && renderStripe()}
+                {step === 'complete' && renderComplete()}
             </main>
         </div>
     )

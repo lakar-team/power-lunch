@@ -100,13 +100,28 @@ export default function WalletPage() {
                         </p>
 
                         {isHost ? (
-                            <Link
-                                href="/host/onboard"
-                                className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl inline-block hover:bg-indigo-700 transition shadow-lg"
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const res = await fetch('/api/hosts/wallet-setup', {
+                                            method: 'POST',
+                                            credentials: 'include',
+                                        })
+                                        const data = await res.json()
+                                        if (res.ok && data.url) {
+                                            window.location.href = data.url
+                                        } else {
+                                            alert(data.error || 'Failed to start wallet setup')
+                                        }
+                                    } catch (err) {
+                                        alert('Failed to connect to server')
+                                    }
+                                }}
+                                className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg"
                             >
                                 <i className="fa-solid fa-link mr-2"></i>
                                 Connect Stripe Account
-                            </Link>
+                            </button>
                         ) : (
                             <Link
                                 href="/host/onboard"

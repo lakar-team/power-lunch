@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, createAdminClient } from '@/lib/supabase/server'
-import { createConnectedAccount, createConnectOnboardingLink } from '@/lib/stripe'
 
 // Use Edge Runtime for Cloudflare
 export const runtime = 'edge'
 
-// POST /api/hosts/onboard - Start Stripe Connect onboarding
+// POST /api/hosts/onboard - Create host profile (no Stripe required)
 export async function POST(request: NextRequest) {
     try {
         // Use server client to verify user session from cookies
@@ -20,6 +19,9 @@ export async function POST(request: NextRequest) {
             }, { status: 401 })
         }
 
+        const body = await request.json()
+        const { bio, topics } = body
+
         // Use admin client for database operations
         const supabase = createAdminClient()
 
@@ -30,105 +32,67 @@ export async function POST(request: NextRequest) {
             .eq('user_id', user.id)
             .single()
 
-        let stripeAccountId: string
-
-        if (existingHost?.stripe_account_id) {
-            // Use existing Stripe account
-            stripeAccountId = existingHost.stripe_account_id
-        } else {
-            // Create new Stripe Connected Account
-            console.log('[hosts/onboard] Creating Stripe account for:', user.email)
-            stripeAccountId = await createConnectedAccount(user.email!)
-            console.log('[hosts/onboard] Created Stripe account:', stripeAccountId)
-
-            if (!existingHost) {
-                // Create host profile
-                const hostData = {
-                    user_id: user.id,
-                    stripe_account_id: stripeAccountId,
-                }
-                const { error: hostError } = await supabase
-                    .from('hosts')
-                    .insert(hostData as any)
-
-                if (hostError) {
-                    console.error('[hosts/onboard] DB error:', hostError.message)
-                    return NextResponse.json({ error: hostError.message }, { status: 500 })
-                }
-            } else {
-                // Update existing host with Stripe account
+        if (existingHost) {
+            // Update existing host with new topics
+            if (topics && topics.length > 0) {
                 await supabase
                     .from('hosts')
-                    .update({ stripe_account_id: stripeAccountId } as any)
+                    .update({ topics } as any)
                     .eq('id', existingHost.id)
             }
-        }
 
-        // Create onboarding link
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-        console.log('[hosts/onboard] Creating onboarding link with baseUrl:', baseUrl)
-
-        let onboardingUrl: string;
-        try {
-            onboardingUrl = await createConnectOnboardingLink(
-                stripeAccountId,
-                `${baseUrl}/host/dashboard?onboarding=complete`,
-                `${baseUrl}/host/onboard?refresh=true`
-            )
-        } catch (linkError: any) {
-            console.warn('[hosts/onboard] Initial link creation failed:', linkError.message)
-
-            // Check if error is due to invalid account (e.g. environment mismatch or deleted account)
-            // Stripe errors for non-existent accounts usually contain "No such account" or "does not exist"
-            if (linkError.message?.includes('No such account') ||
-                linkError.message?.includes('does not exist') ||
-                linkError.message?.includes('not connected to your platform')) {
-
-                console.log('[hosts/onboard] Detected invalid account ID, creating new connected account...')
-
-                // 1. Create NEW connected account
-                const newStripeAccountId = await createConnectedAccount(user.email!)
-                console.log('[hosts/onboard] Created NEW Stripe account:', newStripeAccountId)
-
-                // 2. Update database with new ID
-                if (existingHost) {
-                    const { error: updateError } = await supabase
-                        .from('hosts')
-                        .update({ stripe_account_id: newStripeAccountId } as any)
-                        .eq('id', existingHost.id)
-
-                    if (updateError) {
-                        throw new Error(`Failed to update host with new Stripe ID: ${updateError.message}`)
-                    }
-                } else {
-                    // Should theoretically not reach here if logic follows, but for safety
-                    const hostData = {
-                        user_id: user.id,
-                        stripe_account_id: newStripeAccountId,
-                    }
-                    await supabase.from('hosts').insert(hostData as any)
-                }
-
-                // 3. Retry creating onboarding link with NEW ID
-                onboardingUrl = await createConnectOnboardingLink(
-                    newStripeAccountId,
-                    `${baseUrl}/host/dashboard?onboarding=complete`,
-                    `${baseUrl}/host/onboard?refresh=true`
-                )
-                console.log('[hosts/onboard] Retry successful, new link created')
-            } else {
-                // If it's some other error, rethrow it
-                throw linkError
+            // Update profile bio
+            if (bio) {
+                await supabase
+                    .from('profiles')
+                    .update({ bio })
+                    .eq('id', user.id)
             }
+
+            return NextResponse.json({
+                success: true,
+                host_id: existingHost.id,
+                has_stripe: !!existingHost.stripe_account_id,
+                message: 'Host profile updated'
+            })
         }
 
-        console.log('[hosts/onboard] Onboarding URL created:', onboardingUrl)
+        // Create new host profile (no Stripe yet)
+        const hostData = {
+            user_id: user.id,
+            topics: topics || [],
+        }
+        const { data: newHost, error: hostError } = await supabase
+            .from('hosts')
+            .insert(hostData as any)
+            .select('id')
+            .single()
 
-        return NextResponse.json({ url: onboardingUrl })
+        if (hostError) {
+            console.error('[hosts/onboard] DB error:', hostError.message)
+            return NextResponse.json({ error: hostError.message }, { status: 500 })
+        }
+
+        // Update profile bio
+        if (bio) {
+            await supabase
+                .from('profiles')
+                .update({ bio })
+                .eq('id', user.id)
+        }
+
+        console.log('[hosts/onboard] Created host profile:', newHost.id)
+
+        return NextResponse.json({
+            success: true,
+            host_id: newHost.id,
+            has_stripe: false,
+            message: 'Host profile created. Set up wallet to accept bookings.'
+        })
     } catch (err: any) {
         console.error('[hosts/onboard] Unexpected error:', err.message, err.stack)
         return NextResponse.json({
-            error: 'Failed to start onboarding',
+            error: 'Failed to create host profile',
             details: err.message
         }, { status: 500 })
     }

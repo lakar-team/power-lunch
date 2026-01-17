@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { createPaymentIntent, calculateFees } from '@/lib/stripe'
 
 // Use Edge Runtime for Cloudflare
 export const runtime = 'edge'
@@ -115,7 +114,7 @@ export async function POST(request: NextRequest) {
       )
     `)
         .eq('id', body.listing_id)
-        .single() // Removed generic
+        .single()
 
     if (listingError || !listing) {
         return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
@@ -128,10 +127,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Cannot book your own listing' }, { status: 400 })
     }
 
-    // Check if host has Stripe account for payments
-    if (!listingHost.stripe_account_id) {
-        return NextResponse.json({ error: 'Host is not set up for payments' }, { status: 400 })
-    }
+    // NOTE: We no longer require Stripe setup here - booking will be pending_host_accept
+    // Payment is created when host accepts the booking
 
     // Calculate end time based on duration
     const startTime = body.start_time
@@ -145,19 +142,7 @@ export async function POST(request: NextRequest) {
     const randomPart = Math.random().toString(36).substring(2, 10)
     const qrCodeHash = await generateSecureHash(`${body.listing_id}:${body.booking_date}:${Date.now()}:${qrSecret}:${randomPart}`)
 
-    // Create Stripe Payment Intent
-    let paymentIntent
-    try {
-        paymentIntent = await createPaymentIntent(
-            listing.price_yen,
-            listingHost.stripe_account_id,
-            'pending' // Will update after booking is created
-        )
-    } catch (stripeError: any) {
-        return NextResponse.json({ error: stripeError.message }, { status: 500 })
-    }
-
-    // Create booking
+    // Create booking with pending_host_accept status (no payment yet)
     const bookingData = {
         listing_id: body.listing_id,
         guest_id: user.id,
@@ -168,37 +153,21 @@ export async function POST(request: NextRequest) {
         venue_selected: body.venue_selected,
         guest_note: body.guest_note,
         qr_code_hash: qrCodeHash,
-        stripe_payment_intent_id: paymentIntent.id,
-        status: 'pending' as const,
+        status: 'pending' as const, // Host needs to accept
     }
     const { data: booking, error: bookingError } = await supabase
         .from('bookings' as any)
         .insert(bookingData as any)
         .select()
-        .single() // Removed generic
+        .single()
 
     if (bookingError || !booking) {
         return NextResponse.json({ error: bookingError?.message || 'Failed to create booking' }, { status: 500 })
     }
 
-    // Create transaction record
-    const fees = calculateFees(listing.price_yen)
-    const transactionData = {
-        booking_id: booking.id,
-        amount_yen: fees.totalAmount,
-        platform_fee_yen: fees.platformFee,
-        host_payout_yen: fees.hostPayout,
-        stripe_charge_id: paymentIntent.id,
-        status: 'pending' as const,
-    }
-    await supabase.from('transactions' as any).insert(transactionData as any)
-
     return NextResponse.json({
         booking,
-        payment: {
-            clientSecret: paymentIntent.client_secret,
-            amount: listing.price_yen,
-        },
         qrCode: `PL-${qrCodeHash}-JP`,
+        message: 'Booking request sent. Waiting for host to accept.',
     }, { status: 201 })
 }
