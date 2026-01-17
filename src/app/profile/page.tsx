@@ -55,6 +55,10 @@ export default function ProfilePage() {
         </div>
     }
 
+    if (!user) {
+        return null // Redirect will happen in useEffect
+    }
+
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr)
         return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
