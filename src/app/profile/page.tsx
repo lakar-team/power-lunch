@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -12,7 +12,7 @@ import { useAuth } from '@/components/AuthProvider'
 import Header from '@/components/Header'
 import HostingTab from '@/components/HostingTab'
 
-export default function ProfilePage() {
+function ProfilePageContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const { t } = useTranslation()
@@ -230,5 +230,18 @@ export default function ProfilePage() {
                 )}
             </div>
         </div>
+    )
+}
+
+// Wrap with Suspense for useSearchParams
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+            </div>
+        }>
+            <ProfilePageContent />
+        </Suspense>
     )
 }
