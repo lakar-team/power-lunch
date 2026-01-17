@@ -91,3 +91,38 @@ export async function processRefund(
 
     return refund
 }
+
+// Get Stripe Connected Account status
+export async function getAccountStatus(accountId: string) {
+    try {
+        const account = await stripe.accounts.retrieve(accountId)
+
+        return {
+            connected: true,
+            details_submitted: account.details_submitted,
+            charges_enabled: account.charges_enabled,
+            payouts_enabled: account.payouts_enabled,
+            // Mask bank info for display (last 4 digits if available)
+            external_accounts: account.external_accounts?.data?.map((ext: any) => ({
+                type: ext.object, // 'bank_account' or 'card'
+                last4: ext.last4,
+                bank_name: ext.bank_name,
+            })) || [],
+        }
+    } catch (error: any) {
+        console.error('[stripe] getAccountStatus error:', error.message)
+        return {
+            connected: false,
+            details_submitted: false,
+            charges_enabled: false,
+            payouts_enabled: false,
+            external_accounts: [],
+        }
+    }
+}
+
+// Create Stripe Express Dashboard link for hosts to manage account
+export async function createDashboardLink(accountId: string) {
+    const loginLink = await stripe.accounts.createLoginLink(accountId)
+    return loginLink.url
+}

@@ -6,11 +6,22 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { LanguageToggle } from '@/lib/i18n/translations'
 
+interface StripeStatus {
+    details_submitted: boolean
+    charges_enabled: boolean
+    payouts_enabled: boolean
+    external_accounts: Array<{ type: string; last4: string; bank_name?: string }>
+}
+
 export default function WalletPage() {
     const router = useRouter()
     const [user, setUser] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [isHost, setIsHost] = useState(false)
+    const [hasStripe, setHasStripe] = useState(false)
+    const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null)
+    const [dashboardUrl, setDashboardUrl] = useState<string | null>(null)
+    const [connectingStripe, setConnectingStripe] = useState(false)
 
     useEffect(() => {
         async function checkUser() {
@@ -21,18 +32,43 @@ export default function WalletPage() {
             }
             setUser(user)
 
-            // Check if user is a host
-            const { data: host } = await supabase
-                .from('hosts')
-                .select('id, stripe_account_id')
-                .eq('user_id', user.id)
-                .single()
+            // Fetch wallet status from API
+            try {
+                const res = await fetch('/api/hosts/wallet-setup', { credentials: 'include' })
+                const data = await res.json()
 
-            setIsHost(!!host)
+                setIsHost(data.is_host || false)
+                setHasStripe(data.has_stripe || false)
+                setStripeStatus(data.stripe_status || null)
+                setDashboardUrl(data.dashboard_url || null)
+            } catch (e) {
+                console.error('Failed to fetch wallet status:', e)
+            }
+
             setLoading(false)
         }
         checkUser()
     }, [router])
+
+    const handleConnectStripe = async () => {
+        setConnectingStripe(true)
+        try {
+            const res = await fetch('/api/hosts/wallet-setup', {
+                method: 'POST',
+                credentials: 'include',
+            })
+            const data = await res.json()
+            if (res.ok && data.url) {
+                window.location.href = data.url
+            } else {
+                alert(data.error || 'Failed to start wallet setup')
+                setConnectingStripe(false)
+            }
+        } catch (err) {
+            alert('Failed to connect to server')
+            setConnectingStripe(false)
+        }
+    }
 
     if (loading) {
         return (
@@ -85,51 +121,96 @@ export default function WalletPage() {
                     </div>
                 )}
 
-                {/* Payment Setup */}
+                {/* Payment Setup / Status */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div className="text-center">
-                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i className="fa-brands fa-stripe text-3xl text-indigo-600"></i>
-                        </div>
-                        <h2 className="font-bold text-lg mb-2">Payout Method</h2>
-                        <p className="text-gray-500 text-sm mb-6">
-                            {isHost
-                                ? 'Complete Stripe setup to receive payouts from your sessions.'
-                                : 'Become a host to start earning money on Power Lunch.'
-                            }
-                        </p>
+                        {hasStripe && stripeStatus?.details_submitted ? (
+                            // Connected state
+                            <>
+                                <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i className="fa-solid fa-check text-3xl text-green-600"></i>
+                                </div>
+                                <h2 className="font-bold text-lg mb-2">Stripe Connected</h2>
+                                <p className="text-gray-500 text-sm mb-4">
+                                    Your payout account is set up and ready to receive payments.
+                                </p>
 
-                        {isHost ? (
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        const res = await fetch('/api/hosts/wallet-setup', {
-                                            method: 'POST',
-                                            credentials: 'include',
-                                        })
-                                        const data = await res.json()
-                                        if (res.ok && data.url) {
-                                            window.location.href = data.url
-                                        } else {
-                                            alert(data.error || 'Failed to start wallet setup')
-                                        }
-                                    } catch (err) {
-                                        alert('Failed to connect to server')
-                                    }
-                                }}
-                                className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg"
-                            >
-                                <i className="fa-solid fa-link mr-2"></i>
-                                Connect Stripe Account
-                            </button>
+                                {/* Bank info */}
+                                {stripeStatus.external_accounts.length > 0 && (
+                                    <div className="bg-gray-50 rounded-xl p-3 mb-4 text-left">
+                                        {stripeStatus.external_accounts.map((acc, i) => (
+                                            <div key={i} className="flex items-center justify-between">
+                                                <div className="flex items-center">
+                                                    <i className="fa-solid fa-building-columns text-gray-400 mr-3"></i>
+                                                    <div>
+                                                        <p className="text-sm font-medium">{acc.bank_name || 'Bank Account'}</p>
+                                                        <p className="text-xs text-gray-400">****{acc.last4}</p>
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-green-600 font-medium">Active</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Status badges */}
+                                <div className="flex justify-center gap-2 mb-4">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${stripeStatus.charges_enabled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        {stripeStatus.charges_enabled ? '✓ Charges enabled' : '⏳ Pending'}
+                                    </span>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${stripeStatus.payouts_enabled ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        {stripeStatus.payouts_enabled ? '✓ Payouts enabled' : '⏳ Pending'}
+                                    </span>
+                                </div>
+
+                                {dashboardUrl && (
+                                    <a
+                                        href={dashboardUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full bg-gray-100 text-gray-700 font-bold py-3 rounded-xl inline-block hover:bg-gray-200 transition"
+                                    >
+                                        <i className="fa-solid fa-external-link mr-2"></i>
+                                        Manage in Stripe
+                                    </a>
+                                )}
+                            </>
                         ) : (
-                            <Link
-                                href="/host/onboard"
-                                className="w-full bg-black text-white font-bold py-3 rounded-xl inline-block hover:bg-gray-800 transition shadow-lg"
-                            >
-                                <i className="fa-solid fa-plus mr-2"></i>
-                                Become a Host
-                            </Link>
+                            // Not connected state
+                            <>
+                                <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i className="fa-brands fa-stripe text-3xl text-indigo-600"></i>
+                                </div>
+                                <h2 className="font-bold text-lg mb-2">Payout Method</h2>
+                                <p className="text-gray-500 text-sm mb-6">
+                                    {isHost
+                                        ? 'Complete Stripe setup to receive payouts from your sessions.'
+                                        : 'Become a host to start earning money on Power Lunch.'
+                                    }
+                                </p>
+
+                                {isHost ? (
+                                    <button
+                                        onClick={handleConnectStripe}
+                                        disabled={connectingStripe}
+                                        className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg disabled:opacity-50"
+                                    >
+                                        {connectingStripe ? (
+                                            <><i className="fa-solid fa-spinner fa-spin mr-2"></i>Connecting...</>
+                                        ) : (
+                                            <><i className="fa-solid fa-link mr-2"></i>Connect Stripe Account</>
+                                        )}
+                                    </button>
+                                ) : (
+                                    <Link
+                                        href="/host/onboard"
+                                        className="w-full bg-black text-white font-bold py-3 rounded-xl inline-block hover:bg-gray-800 transition shadow-lg"
+                                    >
+                                        <i className="fa-solid fa-plus mr-2"></i>
+                                        Become a Host
+                                    </Link>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>

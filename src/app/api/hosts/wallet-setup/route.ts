@@ -121,9 +121,39 @@ export async function GET(request: NextRequest) {
         })
     }
 
+    // If no Stripe account, return basic status
+    if (!host.stripe_account_id) {
+        return NextResponse.json({
+            is_host: true,
+            has_stripe: false,
+            wallet_ready: false,
+        })
+    }
+
+    // Get detailed Stripe account status
+    const { getAccountStatus, createDashboardLink } = await import('@/lib/stripe')
+    const accountStatus = await getAccountStatus(host.stripe_account_id)
+
+    // Get dashboard link if account is set up
+    let dashboardUrl: string | null = null
+    if (accountStatus.details_submitted) {
+        try {
+            dashboardUrl = await createDashboardLink(host.stripe_account_id)
+        } catch (e) {
+            console.warn('[wallet-setup] Could not create dashboard link:', e)
+        }
+    }
+
     return NextResponse.json({
         is_host: true,
-        has_stripe: !!host.stripe_account_id,
-        wallet_ready: !!host.stripe_account_id,
+        has_stripe: true,
+        wallet_ready: accountStatus.charges_enabled && accountStatus.payouts_enabled,
+        stripe_status: {
+            details_submitted: accountStatus.details_submitted,
+            charges_enabled: accountStatus.charges_enabled,
+            payouts_enabled: accountStatus.payouts_enabled,
+            external_accounts: accountStatus.external_accounts,
+        },
+        dashboard_url: dashboardUrl,
     })
 }
