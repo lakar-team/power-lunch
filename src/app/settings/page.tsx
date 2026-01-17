@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 
 import { useAuth } from '@/components/AuthProvider'
