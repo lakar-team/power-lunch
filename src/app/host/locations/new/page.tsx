@@ -115,102 +115,90 @@ export default function NewLocationPage() {
         checkHost()
     }, [router])
 
-    // Initialize map (only when step 1 is active)
+    // State for Leaflet loading (separate from map ready)
+    const [leafletLoaded, setLeafletLoaded] = useState(false)
+
+    // Load Leaflet from CDN (Step 1)
     useEffect(() => {
-        if (step !== 1 || !mapContainerRef.current || mapRef.current) return
+        if (typeof window === 'undefined') return
 
-        const initMap = async () => {
-            try {
-                // Load Leaflet CSS and JS
-                if (!document.getElementById('leaflet-css')) {
-                    const link = document.createElement('link')
-                    link.id = 'leaflet-css'
-                    link.rel = 'stylesheet'
-                    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-                    document.head.appendChild(link)
-                }
-
-                if (!window.L) {
-                    const script = document.createElement('script')
-                    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-                    document.head.appendChild(script)
-                    await new Promise((resolve) => {
-                        script.onload = resolve
-                    })
-                } else {
-                    // Slight delay to ensure CSS applies if it was just added
-                    await new Promise(r => setTimeout(r, 100))
-                }
-
-                const L = window.L
-
-                // Fix default icon issues in Next.js
-                delete (L.Icon.Default.prototype as any)._getIconUrl
-                L.Icon.Default.mergeOptions({
-                    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                })
-
-                const map = L.map(mapContainerRef.current!, {
-                    zoomControl: false, // We'll add it manually or leave it off for cleaner look
-                    attributionControl: false
-                }).setView([centralLat, centralLng], 13)
-
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                    maxZoom: 20
-                }).addTo(map)
-
-                // Central marker
-                const marker = L.marker([centralLat, centralLng], {
-                    draggable: true
-                }).addTo(map)
-
-                // Update state on drag end
-                marker.on('dragend', () => {
-                    const { lat, lng } = marker.getLatLng()
-                    setCentralLat(lat)
-                    setCentralLng(lng)
-                    reverseGeocode(lat, lng)
-                    map.panTo([lat, lng])
-                })
-
-                // Click to move marker
-                map.on('click', (e: any) => {
-                    const { lat, lng } = e.latlng
-                    marker.setLatLng([lat, lng])
-                    setCentralLat(lat)
-                    setCentralLng(lng)
-                    reverseGeocode(lat, lng)
-                    map.panTo([lat, lng])
-                })
-
-                mapRef.current = map
-                setMapReady(true)
-
-                // Initial geocode
-                reverseGeocode(centralLat, centralLng)
-
-                // Invalid size check after brief delay
-                setTimeout(() => {
-                    map.invalidateSize()
-                }, 250)
-
-            } catch (error) {
-                console.error('Error initializing map:', error)
-                setError('Failed to load map. Please refresh the page.')
-            }
+        // Add Leaflet CSS
+        if (!document.getElementById('leaflet-css-loc')) {
+            const linkEl = document.createElement('link')
+            linkEl.id = 'leaflet-css-loc'
+            linkEl.rel = 'stylesheet'
+            linkEl.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+            document.head.appendChild(linkEl)
         }
 
-        initMap()
-
-        return () => {
-            if (mapRef.current) {
-                mapRef.current.remove()
-                mapRef.current = null
-            }
+        // Add Leaflet JS
+        if (!window.L) {
+            const scriptEl = document.createElement('script')
+            scriptEl.id = 'leaflet-js-loc'
+            scriptEl.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+            scriptEl.onload = () => setLeafletLoaded(true)
+            document.head.appendChild(scriptEl)
+        } else {
+            setLeafletLoaded(true)
         }
-    }, [step, centralLat, centralLng, reverseGeocode])
+    }, [])
+
+    // Initialize map (Step 2 - after Leaflet is loaded and we're on step 1)
+    useEffect(() => {
+        if (!leafletLoaded || step !== 1 || !mapContainerRef.current || mapRef.current) return
+
+        const L = window.L
+        if (!L) return
+
+        // Fix default icon issues
+        delete (L.Icon.Default.prototype as any)._getIconUrl
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        })
+
+        const map = L.map(mapContainerRef.current, {
+            zoomControl: false,
+            attributionControl: false
+        }).setView([centralLat, centralLng], 13)
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(map)
+
+        // Central marker
+        const marker = L.marker([centralLat, centralLng], {
+            draggable: true
+        }).addTo(map)
+
+        // Update state on drag end
+        marker.on('dragend', () => {
+            const { lat, lng } = marker.getLatLng()
+            setCentralLat(lat)
+            setCentralLng(lng)
+            reverseGeocode(lat, lng)
+        })
+
+        // Click to move marker
+        map.on('click', (e: any) => {
+            const { lat, lng } = e.latlng
+            marker.setLatLng([lat, lng])
+            setCentralLat(lat)
+            setCentralLng(lng)
+            reverseGeocode(lat, lng)
+        })
+
+        mapRef.current = map
+        setMapReady(true)
+
+        // Initial geocode
+        reverseGeocode(centralLat, centralLng)
+
+        // Fix sizing after render
+        setTimeout(() => map.invalidateSize(), 100)
+
+    }, [leafletLoaded, step])
 
     // Calculate distance between two points (Haversine formula)
     const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -356,7 +344,7 @@ export default function NewLocationPage() {
             {/* Header */}
             <header className="bg-white border-b border-gray-100 px-4 py-4 flex justify-between items-center sticky top-0 z-50">
                 <div className="flex items-center">
-                    <Link href="/host/dashboard" className="text-gray-500 hover:text-black mr-4">
+                    <Link href="/profile?tab=host" className="text-gray-500 hover:text-black mr-4">
                         <i className="fa-solid fa-arrow-left text-lg"></i>
                     </Link>
                     <span className="font-bold">Add Location</span>
