@@ -34,6 +34,7 @@ export default function NewLocationPage() {
     const [error, setError] = useState<string | null>(null)
     const [host, setHost] = useState<any>(null)
     const [step, setStep] = useState(1)
+    const [mapReady, setMapReady] = useState(false)
 
     // Step 1: Central Location
     const [name, setName] = useState('')
@@ -134,6 +135,7 @@ export default function NewLocationPage() {
                 // Wait for map to load
                 map.on('load', () => {
                     console.log('Map loaded successfully')
+                    setMapReady(true)
                 })
 
                 // Central marker
@@ -300,7 +302,7 @@ export default function NewLocationPage() {
                 throw new Error(data.error || 'Failed to create location')
             }
 
-            router.push('/host/dashboard?location=created')
+            router.push('/profile?tab=host')
         } catch (err: any) {
             setError(err.message)
             setLoading(false)
@@ -358,7 +360,7 @@ export default function NewLocationPage() {
 
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">
-                                Location Name
+                                Event/Lesson Name
                             </label>
                             <input
                                 type="text"
@@ -377,10 +379,10 @@ export default function NewLocationPage() {
                                     className="w-full h-64 rounded-xl overflow-hidden border border-gray-200 bg-gray-100"
                                     style={{ minHeight: '256px' }}
                                 />
-                                {!mapRef.current && (
+                                {!mapReady && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-xl">
                                         <div className="text-gray-500">
-                                            <i className="fa-solid fa-map-location-dot mr-2"></i>
+                                            <i className="fa-solid fa-map-location-dot mr-2 animate-pulse"></i>
                                             Loading map...
                                         </div>
                                     </div>
