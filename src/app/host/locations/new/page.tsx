@@ -114,54 +114,81 @@ export default function NewLocationPage() {
 
         const initMap = async () => {
             try {
-                // Load MapLibre CSS via link tag (avoids build issues)
-                if (!document.getElementById('maplibre-css')) {
+                // Load Leaflet CSS and JS
+                if (!document.getElementById('leaflet-css')) {
                     const link = document.createElement('link')
-                    link.id = 'maplibre-css'
+                    link.id = 'leaflet-css'
                     link.rel = 'stylesheet'
-                    link.href = 'https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css'
+                    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
                     document.head.appendChild(link)
                 }
 
-                const maplibregl = (await import('maplibre-gl')).default
+                if (!window.L) {
+                    const script = document.createElement('script')
+                    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+                    document.head.appendChild(script)
+                    await new Promise((resolve) => {
+                        script.onload = resolve
+                    })
+                } else {
+                    // Slight delay to ensure CSS applies if it was just added
+                    await new Promise(r => setTimeout(r, 100))
+                }
 
-                const map = new maplibregl.Map({
-                    container: mapContainerRef.current!,
-                    style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-                    center: [centralLng, centralLat],
-                    zoom: 12,
+                const L = window.L
+
+                // Fix default icon issues in Next.js
+                delete (L.Icon.Default.prototype as any)._getIconUrl
+                L.Icon.Default.mergeOptions({
+                    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
                 })
 
-                // Wait for map to load
-                map.on('load', () => {
-                    console.log('Map loaded successfully')
-                    setMapReady(true)
-                })
+                const map = L.map(mapContainerRef.current!, {
+                    zoomControl: false, // We'll add it manually or leave it off for cleaner look
+                    attributionControl: false
+                }).setView([centralLat, centralLng], 13)
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 20
+                }).addTo(map)
 
                 // Central marker
-                const marker = new maplibregl.Marker({ color: '#000', draggable: true })
-                    .setLngLat([centralLng, centralLat])
-                    .addTo(map)
+                const marker = L.marker([centralLat, centralLng], {
+                    draggable: true
+                }).addTo(map)
 
+                // Update state on drag end
                 marker.on('dragend', () => {
-                    const lngLat = marker.getLngLat()
-                    setCentralLat(lngLat.lat)
-                    setCentralLng(lngLat.lng)
-                    reverseGeocode(lngLat.lat, lngLat.lng)
+                    const { lat, lng } = marker.getLatLng()
+                    setCentralLat(lat)
+                    setCentralLng(lng)
+                    reverseGeocode(lat, lng)
+                    map.panTo([lat, lng])
                 })
 
                 // Click to move marker
-                map.on('click', (e) => {
-                    marker.setLngLat([e.lngLat.lng, e.lngLat.lat])
-                    setCentralLat(e.lngLat.lat)
-                    setCentralLng(e.lngLat.lng)
-                    reverseGeocode(e.lngLat.lat, e.lngLat.lng)
+                map.on('click', (e: any) => {
+                    const { lat, lng } = e.latlng
+                    marker.setLatLng([lat, lng])
+                    setCentralLat(lat)
+                    setCentralLng(lng)
+                    reverseGeocode(lat, lng)
+                    map.panTo([lat, lng])
                 })
 
                 mapRef.current = map
+                setMapReady(true)
 
                 // Initial geocode
                 reverseGeocode(centralLat, centralLng)
+
+                // Invalid size check after brief delay
+                setTimeout(() => {
+                    map.invalidateSize()
+                }, 250)
+
             } catch (error) {
                 console.error('Error initializing map:', error)
                 setError('Failed to load map. Please refresh the page.')
