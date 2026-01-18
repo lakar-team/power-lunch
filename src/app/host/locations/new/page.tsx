@@ -121,6 +121,7 @@ export default function NewLocationPage() {
     // Load Leaflet from CDN (Step 1)
     useEffect(() => {
         if (typeof window === 'undefined') return
+        console.log('[Map] Loading Leaflet CSS/JS...')
 
         // Add Leaflet CSS
         if (!document.getElementById('leaflet-css-loc')) {
@@ -129,76 +130,99 @@ export default function NewLocationPage() {
             linkEl.rel = 'stylesheet'
             linkEl.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
             document.head.appendChild(linkEl)
+            console.log('[Map] Leaflet CSS added')
         }
 
         // Add Leaflet JS
-        if (!window.L) {
+        if (!(window as any).L) {
             const scriptEl = document.createElement('script')
             scriptEl.id = 'leaflet-js-loc'
             scriptEl.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-            scriptEl.onload = () => setLeafletLoaded(true)
+            scriptEl.onload = () => {
+                console.log('[Map] Leaflet JS loaded!')
+                setLeafletLoaded(true)
+            }
+            scriptEl.onerror = (e) => {
+                console.error('[Map] Failed to load Leaflet JS:', e)
+            }
             document.head.appendChild(scriptEl)
         } else {
+            console.log('[Map] Leaflet already loaded')
             setLeafletLoaded(true)
         }
     }, [])
 
-    // Initialize map (Step 2 - after Leaflet is loaded and we're on step 1)
+    // Initialize map (Step 2 - after Leaflet is loaded, host is set, and we're on step 1)
     useEffect(() => {
-        if (!leafletLoaded || step !== 1 || !mapContainerRef.current || mapRef.current) return
+        console.log('[Map Init] leafletLoaded:', leafletLoaded, 'step:', step, 'host:', !!host, 'container:', !!mapContainerRef.current, 'existing map:', !!mapRef.current)
 
-        const L = window.L
-        if (!L) return
+        if (!leafletLoaded || step !== 1 || !host || !mapContainerRef.current || mapRef.current) {
+            console.log('[Map Init] Conditions not met, skipping')
+            return
+        }
 
-        // Fix default icon issues
-        delete (L.Icon.Default.prototype as any)._getIconUrl
-        L.Icon.Default.mergeOptions({
-            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        })
+        const L = (window as any).L
+        if (!L) {
+            console.error('[Map Init] window.L not found!')
+            return
+        }
 
-        const map = L.map(mapContainerRef.current, {
-            zoomControl: false,
-            attributionControl: false
-        }).setView([centralLat, centralLng], 13)
+        console.log('[Map Init] Creating map...')
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20
-        }).addTo(map)
+        try {
+            // Fix default icon issues
+            delete (L.Icon.Default.prototype as any)._getIconUrl
+            L.Icon.Default.mergeOptions({
+                iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            })
 
-        // Central marker
-        const marker = L.marker([centralLat, centralLng], {
-            draggable: true
-        }).addTo(map)
+            const map = L.map(mapContainerRef.current, {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([centralLat, centralLng], 13)
 
-        // Update state on drag end
-        marker.on('dragend', () => {
-            const { lat, lng } = marker.getLatLng()
-            setCentralLat(lat)
-            setCentralLng(lng)
-            reverseGeocode(lat, lng)
-        })
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 20
+            }).addTo(map)
 
-        // Click to move marker
-        map.on('click', (e: any) => {
-            const { lat, lng } = e.latlng
-            marker.setLatLng([lat, lng])
-            setCentralLat(lat)
-            setCentralLng(lng)
-            reverseGeocode(lat, lng)
-        })
+            // Central marker
+            const marker = L.marker([centralLat, centralLng], {
+                draggable: true
+            }).addTo(map)
 
-        mapRef.current = map
-        setMapReady(true)
+            // Update state on drag end
+            marker.on('dragend', () => {
+                const { lat, lng } = marker.getLatLng()
+                setCentralLat(lat)
+                setCentralLng(lng)
+                reverseGeocode(lat, lng)
+            })
 
-        // Initial geocode
-        reverseGeocode(centralLat, centralLng)
+            // Click to move marker
+            map.on('click', (e: any) => {
+                const { lat, lng } = e.latlng
+                marker.setLatLng([lat, lng])
+                setCentralLat(lat)
+                setCentralLng(lng)
+                reverseGeocode(lat, lng)
+            })
 
-        // Fix sizing after render
-        setTimeout(() => map.invalidateSize(), 100)
+            mapRef.current = map
+            setMapReady(true)
+            console.log('[Map Init] Map created successfully!')
 
-    }, [leafletLoaded, step])
+            // Initial geocode
+            reverseGeocode(centralLat, centralLng)
+
+            // Fix sizing after render
+            setTimeout(() => map.invalidateSize(), 100)
+        } catch (err) {
+            console.error('[Map Init] Error creating map:', err)
+        }
+
+    }, [leafletLoaded, step, host])
 
     // Calculate distance between two points (Haversine formula)
     const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {

@@ -58,53 +58,17 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url)
         const hostId = searchParams.get('host_id')
 
-        // Viewport bounds for map-based filtering (reduces data transfer)
-        const north = searchParams.get('north')
-        const south = searchParams.get('south')
-        const east = searchParams.get('east')
-        const west = searchParams.get('west')
-
         if (!hostId) {
-            // Return active locations for map view - optimized fields only
-            let query = supabase
+            // Simplified query first - just get locations without host join
+            const { data, error } = await supabase
                 .from('host_locations')
-                .select(`
-                    id,
-                    host_id,
-                    name,
-                    location_area,
-                    location_lat,
-                    location_lng,
-                    session_type,
-                    price_yen,
-                    duration_minutes,
-                    host:hosts(
-                        id,
-                        topics,
-                        rating_avg,
-                        profile:profiles(full_name, avatar_url)
-                    )
-                `)
+                .select('*')
                 .eq('is_active', true)
-                .or('date_end.is.null,date_end.gte.' + new Date().toISOString().split('T')[0])
-
-            // Apply viewport bounds if provided (reduces data for large datasets)
-            if (north && south && east && west) {
-                query = query
-                    .gte('location_lat', parseFloat(south))
-                    .lte('location_lat', parseFloat(north))
-                    .gte('location_lng', parseFloat(west))
-                    .lte('location_lng', parseFloat(east))
-            }
-
-            // Limit results to prevent huge payloads
-            query = query.limit(100)
-
-            const { data, error } = await query
+                .limit(100)
 
             if (error) {
-                console.error('[host-locations GET] Query error:', error.message)
-                return NextResponse.json({ error: error.message }, { status: 500 })
+                console.error('[host-locations GET] Query error:', error.message, error.details, error.hint)
+                return NextResponse.json({ error: error.message, details: error.details }, { status: 500 })
             }
             return NextResponse.json(data || [])
         }
@@ -122,8 +86,8 @@ export async function GET(request: NextRequest) {
         }
         return NextResponse.json(data || [])
     } catch (err: any) {
-        console.error('[host-locations GET] Unexpected error:', err)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        console.error('[host-locations GET] Unexpected error:', err.message, err.stack)
+        return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
     }
 }
 
