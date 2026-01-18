@@ -6,6 +6,13 @@ import { useRouter } from 'next/navigation'
 import { useTranslation, LanguageToggle } from '@/lib/i18n/translations'
 import { supabase } from '@/lib/supabase/client'
 
+// Declare Leaflet on window for TypeScript
+declare global {
+    interface Window {
+        L: any
+    }
+}
+
 // Types
 interface Venue {
     id: string
