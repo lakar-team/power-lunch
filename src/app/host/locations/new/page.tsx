@@ -19,6 +19,7 @@ interface Venue {
     name: string
     lat: number
     lng: number
+    marker?: any // Leaflet marker reference
 }
 
 interface WeeklySlot {
@@ -27,46 +28,59 @@ interface WeeklySlot {
     endTime: string
 }
 
+// Constants
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00']
-const durations = [30, 45, 60, 90]
+const DURATIONS = [30, 45, 60, 90]
+const VENUE_RADIUS_KM = 1.0 // 1km radius for venue placement
+const VENUE_RADIUS_METERS = VENUE_RADIUS_KM * 1000
 
 export default function NewLocationPage() {
     const { t, language } = useTranslation()
     const router = useRouter()
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const mapRef = useRef<any>(null)
+    const centralMarkerRef = useRef<any>(null)
+    const radiusCircleRef = useRef<any>(null)
+    const venueMarkersRef = useRef<Map<string, any>>(new Map())
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [host, setHost] = useState<any>(null)
     const [step, setStep] = useState(1)
     const [mapReady, setMapReady] = useState(false)
+    const [leafletLoaded, setLeafletLoaded] = useState(false)
 
-    // Step 1: Central Location
+    // Step 1: Event Details & Location & Venues (Combined)
     const [name, setName] = useState('')
+    const [description, setDescription] = useState('')
     const [centralLat, setCentralLat] = useState<number>(35.6762) // Default: Tokyo
     const [centralLng, setCentralLng] = useState<number>(139.6503)
     const [locationArea, setLocationArea] = useState('')
     const [isGeocodingLoading, setIsGeocodingLoading] = useState(false)
-
-    // Step 2: Session Type & Venues
-    const [sessionType, setSessionType] = useState<'in_person' | 'online' | 'both'>('both')
-    const [meetLink, setMeetLink] = useState('')
     const [venues, setVenues] = useState<Venue[]>([])
-    const [newVenueName, setNewVenueName] = useState('')
-    const [isAddingVenue, setIsAddingVenue] = useState(false)
-    const [tempVenueMarker, setTempVenueMarker] = useState<{ lat: number; lng: number } | null>(null)
+    const [allowOnline, setAllowOnline] = useState(false)
+    const [meetLink, setMeetLink] = useState('')
 
-    // Step 3: Pricing
+    // Step 2: Pricing & Availability
     const [price, setPrice] = useState(1500)
     const [duration, setDuration] = useState(60)
-
-    // Step 4: Availability
     const [validFrom, setValidFrom] = useState('')
     const [validUntil, setValidUntil] = useState('')
     const [weeklySlots, setWeeklySlots] = useState<WeeklySlot[]>([])
     const [blockedDates, setBlockedDates] = useState<string[]>([])
+
+    // Calculate distance between two points (Haversine formula)
+    const getDistanceKm = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371
+        const dLat = (lat2 - lat1) * Math.PI / 180
+        const dLng = (lng2 - lng1) * Math.PI / 180
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2)
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return R * c
+    }, [])
 
     // Reverse geocode function
     const reverseGeocode = useCallback(async (lat: number, lng: number) => {
@@ -115,10 +129,7 @@ export default function NewLocationPage() {
         checkHost()
     }, [router])
 
-    // State for Leaflet loading (separate from map ready)
-    const [leafletLoaded, setLeafletLoaded] = useState(false)
-
-    // Load Leaflet from CDN (Step 1)
+    // Load Leaflet from CDN
     useEffect(() => {
         if (typeof window === 'undefined') return
         console.log('[Map] Loading Leaflet CSS/JS...')
@@ -152,7 +163,106 @@ export default function NewLocationPage() {
         }
     }, [])
 
-    // Initialize map (Step 2 - after Leaflet is loaded, host is set, and we're on step 1)
+    // Create numbered venue icon
+    const createVenueIcon = useCallback((number: number) => {
+        const L = (window as any).L
+        if (!L) return null
+
+        return L.divIcon({
+            className: 'venue-marker',
+            html: `<div style="
+                width: 32px;
+                height: 32px;
+                background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+                border: 3px solid white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            ">${number}</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+        })
+    }, [])
+
+    // Update venue markers on map
+    const updateVenueMarkers = useCallback(() => {
+        const L = (window as any).L
+        const map = mapRef.current
+        if (!L || !map) return
+
+        // Remove old markers that are no longer in venues
+        venueMarkersRef.current.forEach((marker, id) => {
+            if (!venues.find(v => v.id === id)) {
+                map.removeLayer(marker)
+                venueMarkersRef.current.delete(id)
+            }
+        })
+
+        // Add/update markers for current venues
+        venues.forEach((venue, index) => {
+            let marker = venueMarkersRef.current.get(venue.id)
+
+            if (!marker) {
+                // Create new marker
+                marker = L.marker([venue.lat, venue.lng], {
+                    icon: createVenueIcon(index + 1),
+                    draggable: true,
+                }).addTo(map)
+
+                // Handle drag
+                marker.on('dragend', () => {
+                    const { lat, lng } = marker.getLatLng()
+                    const distance = getDistanceKm(centralLat, centralLng, lat, lng)
+
+                    if (distance > VENUE_RADIUS_KM) {
+                        // Move back to previous position
+                        marker.setLatLng([venue.lat, venue.lng])
+                        setError('Venue must be within 1km of central location')
+                        setTimeout(() => setError(null), 3000)
+                    } else {
+                        // Update venue position
+                        setVenues(prev => prev.map(v =>
+                            v.id === venue.id ? { ...v, lat, lng } : v
+                        ))
+                    }
+                })
+
+                // Add tooltip with venue name
+                if (venue.name) {
+                    marker.bindTooltip(venue.name, {
+                        permanent: true,
+                        direction: 'top',
+                        offset: [0, -16],
+                        className: 'venue-tooltip'
+                    })
+                }
+
+                venueMarkersRef.current.set(venue.id, marker)
+            } else {
+                // Update existing marker position and icon
+                marker.setLatLng([venue.lat, venue.lng])
+                marker.setIcon(createVenueIcon(index + 1))
+
+                // Update tooltip
+                marker.unbindTooltip()
+                if (venue.name) {
+                    marker.bindTooltip(venue.name, {
+                        permanent: true,
+                        direction: 'top',
+                        offset: [0, -16],
+                        className: 'venue-tooltip'
+                    })
+                }
+            }
+        })
+    }, [venues, centralLat, centralLng, createVenueIcon, getDistanceKm])
+
+    // Initialize map
     useEffect(() => {
         console.log('[Map Init] leafletLoaded:', leafletLoaded, 'step:', step, 'host:', !!host, 'container:', !!mapContainerRef.current, 'existing map:', !!mapRef.current)
 
@@ -178,35 +288,120 @@ export default function NewLocationPage() {
                 shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
             })
 
+            // Add custom styles for venue tooltips
+            const style = document.createElement('style')
+            style.textContent = `
+                .venue-tooltip {
+                    background: white;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 4px 8px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                }
+                .venue-tooltip::before {
+                    border-top-color: white !important;
+                }
+            `
+            document.head.appendChild(style)
+
             const map = L.map(mapContainerRef.current, {
-                zoomControl: false,
+                zoomControl: true,
                 attributionControl: false
-            }).setView([centralLat, centralLng], 13)
+            }).setView([centralLat, centralLng], 14)
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 maxZoom: 20
             }).addTo(map)
 
-            // Central marker
-            const marker = L.marker([centralLat, centralLng], {
-                draggable: true
-            }).addTo(map)
-
-            // Update state on drag end
-            marker.on('dragend', () => {
-                const { lat, lng } = marker.getLatLng()
-                setCentralLat(lat)
-                setCentralLng(lng)
-                reverseGeocode(lat, lng)
+            // Create central marker (larger, different style)
+            const centralIcon = L.divIcon({
+                className: 'central-marker',
+                html: `<div style="
+                    width: 40px;
+                    height: 40px;
+                    background: linear-gradient(135deg, #000 0%, #333 100%);
+                    border: 4px solid white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                ">
+                    <div style="width: 12px; height: 12px; background: white; border-radius: 50%;"></div>
+                </div>`,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
             })
 
-            // Click to move marker
-            map.on('click', (e: any) => {
-                const { lat, lng } = e.latlng
-                marker.setLatLng([lat, lng])
+            const centralMarker = L.marker([centralLat, centralLng], {
+                icon: centralIcon,
+                draggable: true,
+                zIndexOffset: 1000
+            }).addTo(map)
+
+            // Create 1km radius circle
+            const radiusCircle = L.circle([centralLat, centralLng], {
+                radius: VENUE_RADIUS_METERS,
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.1,
+                weight: 2,
+                dashArray: '5, 5'
+            }).addTo(map)
+
+            centralMarkerRef.current = centralMarker
+            radiusCircleRef.current = radiusCircle
+
+            // Update circle and geocode on central marker drag
+            centralMarker.on('dragend', () => {
+                const { lat, lng } = centralMarker.getLatLng()
                 setCentralLat(lat)
                 setCentralLng(lng)
+                radiusCircle.setLatLng([lat, lng])
                 reverseGeocode(lat, lng)
+
+                // Check if any venues are now outside the circle and remove them
+                setVenues(prev => {
+                    const validVenues = prev.filter(v => {
+                        const distance = getDistanceKm(lat, lng, v.lat, v.lng)
+                        return distance <= VENUE_RADIUS_KM
+                    })
+                    if (validVenues.length < prev.length) {
+                        setError('Some venues were removed as they are now outside the 1km radius')
+                        setTimeout(() => setError(null), 3000)
+                    }
+                    return validVenues
+                })
+            })
+
+            // Click to add venue pin
+            map.on('click', (e: any) => {
+                const { lat, lng } = e.latlng
+                const distance = getDistanceKm(centralLat, centralLng, lat, lng)
+
+                if (distance > VENUE_RADIUS_KM) {
+                    setError('Click inside the circle to add a venue (within 1km)')
+                    setTimeout(() => setError(null), 3000)
+                    return
+                }
+
+                if (venues.length >= 3) {
+                    setError('Maximum 3 venues allowed')
+                    setTimeout(() => setError(null), 3000)
+                    return
+                }
+
+                // Add new venue
+                const newVenue: Venue = {
+                    id: `venue_${Date.now()}`,
+                    name: '',
+                    lat,
+                    lng,
+                }
+                setVenues(prev => [...prev, newVenue])
+                setError(null)
             })
 
             mapRef.current = map
@@ -222,45 +417,61 @@ export default function NewLocationPage() {
             console.error('[Map Init] Error creating map:', err)
         }
 
-    }, [leafletLoaded, step, host])
+    }, [leafletLoaded, step, host, centralLat, centralLng, reverseGeocode, getDistanceKm, venues.length])
 
-    // Calculate distance between two points (Haversine formula)
-    const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-        const R = 6371
-        const dLat = (lat2 - lat1) * Math.PI / 180
-        const dLng = (lng2 - lng1) * Math.PI / 180
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2)
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        return R * c
-    }
+    // Update venue markers when venues change
+    useEffect(() => {
+        updateVenueMarkers()
+    }, [updateVenueMarkers])
 
-    // Add venue
-    const addVenue = () => {
-        if (!tempVenueMarker || !newVenueName.trim()) return
+    // Update centralLat/centralLng refs for click handler
+    useEffect(() => {
+        const map = mapRef.current
+        if (!map) return
 
-        const distance = getDistanceKm(centralLat, centralLng, tempVenueMarker.lat, tempVenueMarker.lng)
-        if (distance > 3) {
-            setError('Venue must be within 3km of central location')
-            return
-        }
+        // Update click handler with current central position
+        map.off('click')
+        map.on('click', (e: any) => {
+            const { lat, lng } = e.latlng
+            const distance = getDistanceKm(centralLat, centralLng, lat, lng)
 
-        setVenues([...venues, {
-            id: `venue_${Date.now()}`,
-            name: newVenueName.trim(),
-            lat: tempVenueMarker.lat,
-            lng: tempVenueMarker.lng,
-        }])
-        setNewVenueName('')
-        setTempVenueMarker(null)
-        setIsAddingVenue(false)
-        setError(null)
-    }
+            if (distance > VENUE_RADIUS_KM) {
+                setError('Click inside the circle to add a venue (within 1km)')
+                setTimeout(() => setError(null), 3000)
+                return
+            }
+
+            if (venues.length >= 3) {
+                setError('Maximum 3 venues allowed')
+                setTimeout(() => setError(null), 3000)
+                return
+            }
+
+            // Add new venue
+            const newVenue: Venue = {
+                id: `venue_${Date.now()}`,
+                name: '',
+                lat,
+                lng,
+            }
+            setVenues(prev => [...prev, newVenue])
+            setError(null)
+        })
+    }, [centralLat, centralLng, venues.length, getDistanceKm])
 
     // Remove venue
     const removeVenue = (id: string) => {
+        const marker = venueMarkersRef.current.get(id)
+        if (marker && mapRef.current) {
+            mapRef.current.removeLayer(marker)
+            venueMarkersRef.current.delete(id)
+        }
         setVenues(venues.filter(v => v.id !== id))
+    }
+
+    // Update venue name
+    const updateVenueName = (id: string, name: string) => {
+        setVenues(venues.map(v => v.id === id ? { ...v, name } : v))
     }
 
     // Toggle weekly slot
@@ -310,6 +521,27 @@ export default function NewLocationPage() {
         return weeklySlots.some(s => s.day === dayOfWeek)
     }
 
+    // Determine session type based on venues and online toggle
+    const getSessionType = (): 'in_person' | 'online' | 'both' => {
+        const hasVenues = venues.length > 0 && venues.some(v => v.name.trim())
+        if (hasVenues && allowOnline) return 'both'
+        if (hasVenues) return 'in_person'
+        if (allowOnline) return 'online'
+        return 'in_person' // Default
+    }
+
+    // Validate step 1
+    const isStep1Valid = (): boolean => {
+        if (!name.trim()) return false
+        if (!locationArea.trim()) return false
+
+        const hasValidVenues = venues.length > 0 && venues.every(v => v.name.trim())
+        const hasOnline = allowOnline && meetLink.trim()
+
+        // Must have at least venues or online option
+        return hasValidVenues || hasOnline
+    }
+
     // Submit
     const handleSubmit = async () => {
         if (!host) return
@@ -318,7 +550,13 @@ export default function NewLocationPage() {
         setError(null)
 
         try {
-            const venueOptions = sessionType === 'online' ? [] : venues
+            const sessionType = getSessionType()
+            const venueOptions = sessionType === 'online' ? [] : venues.filter(v => v.name.trim()).map(v => ({
+                id: v.id,
+                name: v.name,
+                lat: v.lat,
+                lng: v.lng
+            }))
 
             const res = await fetch('/api/host-locations', {
                 method: 'POST',
@@ -326,11 +564,12 @@ export default function NewLocationPage() {
                 body: JSON.stringify({
                     host_id: host.id,
                     name,
+                    description,
                     location_area: sessionType === 'online' ? 'Online' : locationArea,
                     location_lat: sessionType === 'online' ? null : centralLat,
                     location_lng: sessionType === 'online' ? null : centralLng,
                     session_type: sessionType,
-                    meet_link: sessionType !== 'in_person' ? meetLink : null,
+                    meet_link: allowOnline ? meetLink : null,
                     venue_options: venueOptions,
                     price_yen: price,
                     duration_minutes: duration,
@@ -371,7 +610,7 @@ export default function NewLocationPage() {
                     <Link href="/profile?tab=host" className="text-gray-500 hover:text-black mr-4">
                         <i className="fa-solid fa-arrow-left text-lg"></i>
                     </Link>
-                    <span className="font-bold">Add Location</span>
+                    <span className="font-bold">Create New Event</span>
                 </div>
                 <LanguageToggle />
             </header>
@@ -380,15 +619,15 @@ export default function NewLocationPage() {
             <div className="bg-white border-b border-gray-100 px-4 py-3">
                 <div className="max-w-lg mx-auto">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold">Step {step} of 4</span>
+                        <span className="text-sm font-bold">Step {step} of 2</span>
                         <span className="text-sm text-gray-400">
-                            {step === 1 ? 'Location' : step === 2 ? 'Session & Venues' : step === 3 ? 'Pricing' : 'Schedule'}
+                            {step === 1 ? 'Location & Venues' : 'Schedule & Pricing'}
                         </span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div
                             className="h-full bg-black transition-all duration-300"
-                            style={{ width: `${(step / 4) * 100}%` }}
+                            style={{ width: `${(step / 2) * 100}%` }}
                         />
                     </div>
                 </div>
@@ -396,34 +635,52 @@ export default function NewLocationPage() {
 
             {/* Form Content */}
             <div className="max-w-lg mx-auto px-4 py-8">
-                {/* Step 1: Central Location */}
+                {/* Step 1: Location & Venues (Combined) */}
                 {step === 1 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-black mb-2">Set Your Location</h2>
-                            <p className="text-gray-500">Drag the pin or click on the map to set your central area.</p>
+                            <h2 className="text-2xl font-black mb-2">Event Details & Location</h2>
+                            <p className="text-gray-500">Set your event info and choose venue options within 1km.</p>
                         </div>
 
+                        {/* Event Name */}
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">
-                                Event/Lesson Name
+                                Event Name *
                             </label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g., Tokyo Sessions, Sendai Lunches"
+                                placeholder="e.g., Tokyo Coffee Sessions"
                                 className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
                             />
                         </div>
 
-                        {/* Map Container */}
-                        <div className="relative">
+                        {/* Description */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                Description <span className="font-normal text-gray-400">(optional)</span>
+                            </label>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Tell guests what to expect..."
+                                rows={3}
+                                className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent resize-none"
+                            />
+                        </div>
+
+                        {/* Map with Circle */}
+                        <div className="space-y-3">
+                            <label className="block text-sm font-bold text-gray-700">
+                                Drop Venue Pins <span className="font-normal text-gray-400">(click map to add up to 3)</span>
+                            </label>
                             <div className="relative">
                                 <div
                                     ref={mapContainerRef}
-                                    className="w-full h-64 rounded-xl overflow-hidden border border-gray-200 bg-gray-100"
-                                    style={{ minHeight: '256px' }}
+                                    className="w-full h-80 rounded-xl overflow-hidden border border-gray-200 bg-gray-100"
+                                    style={{ minHeight: '320px' }}
                                 />
                                 {!mapReady && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-xl">
@@ -433,351 +690,288 @@ export default function NewLocationPage() {
                                         </div>
                                     </div>
                                 )}
+                                {/* Map legend */}
+                                <div className="absolute bottom-3 left-3 bg-white px-3 py-2 rounded-lg shadow text-xs space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 bg-black rounded-full border-2 border-white shadow"></div>
+                                        <span>Central area (drag to move)</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow flex items-center justify-center text-white text-[8px] font-bold">1</div>
+                                        <span>Venue pins</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-1 border border-blue-500 border-dashed"></div>
+                                        <span>1km radius</span>
+                                    </div>
+                                </div>
+                                {/* Area display */}
+                                <div className="absolute top-3 left-3 bg-white px-3 py-2 rounded-lg shadow text-sm">
+                                    <i className="fa-solid fa-location-dot mr-2 text-black"></i>
+                                    {isGeocodingLoading ? (
+                                        <span className="text-gray-400">Detecting...</span>
+                                    ) : (
+                                        <span className="font-medium">{locationArea || 'Drag pin to set'}</span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="absolute bottom-3 left-3 bg-white px-3 py-2 rounded-lg shadow text-sm">
-                                <i className="fa-solid fa-location-dot mr-2 text-black"></i>
-                                {isGeocodingLoading ? (
-                                    <span className="text-gray-400">Detecting...</span>
-                                ) : (
-                                    <span className="font-medium">{locationArea || 'Click or drag to set'}</span>
+                        </div>
+
+                        {/* Venue List */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-3">
+                                Venue Names
+                                <span className="font-normal text-gray-400 ml-2">{venues.length}/3 added</span>
+                            </label>
+                            <div className="space-y-2">
+                                {venues.map((venue, idx) => (
+                                    <div key={venue.id} className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold shrink-0">
+                                            {idx + 1}
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={venue.name}
+                                            onChange={(e) => updateVenueName(venue.id, e.target.value)}
+                                            placeholder={`Venue ${idx + 1} name (e.g., Starbucks Shibuya)`}
+                                            className="flex-1 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                                        />
+                                        <button
+                                            onClick={() => removeVenue(venue.id)}
+                                            className="w-10 h-10 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                                        >
+                                            <i className="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                ))}
+                                {venues.length === 0 && (
+                                    <div className="text-center py-6 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
+                                        <i className="fa-solid fa-map-pin text-2xl mb-2"></i>
+                                        <p>Click on the map to add venue pins</p>
+                                    </div>
+                                )}
+                                {venues.length > 0 && venues.length < 3 && (
+                                    <p className="text-xs text-gray-400 text-center mt-2">
+                                        <i className="fa-solid fa-info-circle mr-1"></i>
+                                        Click on the map within the circle to add more venues
+                                    </p>
                                 )}
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">
-                                Area (auto-detected)
+                        {/* Online Meeting Toggle */}
+                        <div className="bg-gray-50 rounded-xl p-4 space-y-4">
+                            <label className="flex items-center justify-between cursor-pointer">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                                        <i className="fa-solid fa-video"></i>
+                                    </div>
+                                    <div>
+                                        <p className="font-bold">Allow Online Meeting</p>
+                                        <p className="text-sm text-gray-500">Add video call as an option</p>
+                                    </div>
+                                </div>
+                                <div className="relative">
+                                    <input
+                                        type="checkbox"
+                                        checked={allowOnline}
+                                        onChange={(e) => setAllowOnline(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-300 peer-checked:bg-blue-500 rounded-full transition-colors"></div>
+                                    <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+                                </div>
                             </label>
-                            <input
-                                type="text"
-                                value={locationArea}
-                                onChange={(e) => setLocationArea(e.target.value)}
-                                placeholder="Will be filled automatically"
-                                className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-                            />
-                            <p className="text-xs text-gray-400 mt-1">Edit if the auto-detection isn't accurate</p>
+
+                            {allowOnline && (
+                                <div className="pt-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        <i className="fa-brands fa-google mr-2"></i>Google Meet Link
+                                    </label>
+                                    <input
+                                        type="url"
+                                        value={meetLink}
+                                        onChange={(e) => setMeetLink(e.target.value)}
+                                        placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                                        className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                            )}
                         </div>
+
+                        {error && (
+                            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm">
+                                <i className="fa-solid fa-exclamation-circle mr-2"></i>{error}
+                            </div>
+                        )}
 
                         <button
                             onClick={() => setStep(2)}
-                            disabled={!name || !locationArea}
+                            disabled={!isStep1Valid()}
                             className="w-full pl-btn pl-btn-primary disabled:opacity-50"
                         >
-                            Continue <i className="fa-solid fa-arrow-right ml-2"></i>
+                            Continue to Schedule <i className="fa-solid fa-arrow-right ml-2"></i>
                         </button>
                     </div>
                 )}
 
-                {/* Step 2: Session Type & Venues */}
+                {/* Step 2: Pricing & Schedule (Combined) */}
                 {step === 2 && (
                     <div className="space-y-6">
                         <div>
-                            <h2 className="text-2xl font-black mb-2">How Will You Meet?</h2>
-                            <p className="text-gray-500">Choose meeting type and add venue options.</p>
+                            <h2 className="text-2xl font-black mb-2">Schedule & Pricing</h2>
+                            <p className="text-gray-500">Set your availability and price.</p>
                         </div>
 
-                        {/* Session Type Selection */}
-                        <div className="space-y-3">
-                            {[
-                                { type: 'in_person', icon: 'fa-utensils', color: 'bg-green-100 text-green-600', label: 'In-Person Only', desc: 'Meet at a cafe or restaurant' },
-                                { type: 'online', icon: 'fa-video', color: 'bg-blue-100 text-blue-600', label: 'Online Only', desc: 'Connect via video call' },
-                                { type: 'both', icon: 'fa-people-arrows', color: 'bg-purple-100 text-purple-600', label: 'Both Options', desc: 'Let guests choose' },
-                            ].map(opt => (
-                                <button
-                                    key={opt.type}
-                                    onClick={() => setSessionType(opt.type as typeof sessionType)}
-                                    className={`w-full p-4 rounded-xl border-2 text-left transition flex items-center ${sessionType === opt.type ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
-                                >
-                                    <div className={`w-12 h-12 ${opt.color} rounded-xl flex items-center justify-center mr-4`}>
-                                        <i className={`fa-solid ${opt.icon} text-xl`}></i>
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="font-bold">{opt.label}</p>
-                                        <p className="text-sm text-gray-500">{opt.desc}</p>
-                                    </div>
-                                    {sessionType === opt.type && <i className="fa-solid fa-check text-green-500"></i>}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Meet Link for online */}
-                        {(sessionType === 'online' || sessionType === 'both') && (
-                            <div className="bg-blue-50 p-4 rounded-xl">
-                                <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    <i className="fa-brands fa-google mr-2"></i>Video Call Link
-                                </label>
-                                <input
-                                    type="url"
-                                    value={meetLink}
-                                    onChange={(e) => setMeetLink(e.target.value)}
-                                    placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                                    className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            </div>
-                        )}
-
-                        {/* Venue Options for in-person */}
-                        {(sessionType === 'in_person' || sessionType === 'both') && (
+                        {/* Pricing Section */}
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <i className="fa-solid fa-yen-sign text-green-500"></i>
+                                Pricing
+                            </h3>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-3">
-                                    Venue Options (up to 3)
-                                    <span className="font-normal text-gray-400 ml-2">within 3km</span>
-                                </label>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Price (¥)</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">¥</span>
+                                    <input
+                                        type="number"
+                                        value={price}
+                                        onChange={(e) => setPrice(Number(e.target.value))}
+                                        min={500}
+                                        max={10000}
+                                        step={100}
+                                        className="w-full p-4 pl-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent text-2xl font-bold"
+                                    />
+                                </div>
+                                <div className="flex justify-between text-xs text-gray-400 mt-2">
+                                    <span>Min ¥500</span>
+                                    <span>You'll receive ¥{Math.round(price * 0.85).toLocaleString()} after 15% fee</span>
+                                </div>
+                            </div>
 
-                                {/* Existing venues */}
-                                <div className="space-y-2 mb-3">
-                                    {venues.map((venue, idx) => (
-                                        <div key={venue.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                            <div className="flex items-center">
-                                                <div className="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mr-3 text-sm font-bold">
-                                                    {idx + 1}
-                                                </div>
-                                                <span className="font-medium">{venue.name}</span>
-                                            </div>
-                                            <button onClick={() => removeVenue(venue.id)} className="text-red-500 hover:text-red-700">
-                                                <i className="fa-solid fa-trash"></i>
-                                            </button>
-                                        </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Duration</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {DURATIONS.map(d => (
+                                        <button
+                                            key={d}
+                                            onClick={() => setDuration(d)}
+                                            className={`py-3 rounded-xl font-bold transition ${duration === d ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                        >
+                                            {d}min
+                                        </button>
                                     ))}
                                 </div>
-
-                                {/* Add venue */}
-                                {venues.length < 3 && (
-                                    isAddingVenue ? (
-                                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 space-y-3">
-                                            <input
-                                                type="text"
-                                                value={newVenueName}
-                                                onChange={(e) => setNewVenueName(e.target.value)}
-                                                placeholder="Venue name (e.g., Starbucks Shibuya)"
-                                                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                                                autoFocus
-                                            />
-                                            <p className="text-xs text-gray-500">
-                                                <i className="fa-solid fa-info-circle mr-1"></i>
-                                                For now, venues share the central location. Map pin selection coming soon!
-                                            </p>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        if (newVenueName.trim()) {
-                                                            setVenues([...venues, {
-                                                                id: `venue_${Date.now()}`,
-                                                                name: newVenueName.trim(),
-                                                                lat: centralLat,
-                                                                lng: centralLng,
-                                                            }])
-                                                            setNewVenueName('')
-                                                            setIsAddingVenue(false)
-                                                        }
-                                                    }}
-                                                    disabled={!newVenueName.trim()}
-                                                    className="flex-1 py-2 bg-black text-white rounded-lg font-bold disabled:opacity-50"
-                                                >
-                                                    Add Venue
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setIsAddingVenue(false)
-                                                        setNewVenueName('')
-                                                    }}
-                                                    className="px-4 py-2 text-gray-500 hover:text-gray-700"
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => setIsAddingVenue(true)}
-                                            className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-gray-400 hover:text-gray-700 transition"
-                                        >
-                                            <i className="fa-solid fa-plus mr-2"></i>
-                                            Add Venue Option
-                                        </button>
-                                    )
-                                )}
                             </div>
-                        )}
+                        </div>
+
+                        {/* Availability Section */}
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <i className="fa-solid fa-calendar text-blue-500"></i>
+                                Availability
+                            </h3>
+
+                            {/* Date Range */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Start Date</label>
+                                    <input
+                                        type="date"
+                                        value={validFrom}
+                                        onChange={(e) => setValidFrom(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">End Date</label>
+                                    <input
+                                        type="date"
+                                        value={validUntil}
+                                        onChange={(e) => setValidUntil(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Weekly Schedule Grid */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-3">
+                                    Weekly Schedule
+                                    <span className="font-normal text-gray-400 ml-2">(click to toggle)</span>
+                                </label>
+                                <div className="overflow-x-auto">
+                                    <div className="inline-grid gap-1" style={{ gridTemplateColumns: 'auto repeat(7, 1fr)' }}>
+                                        {/* Header row */}
+                                        <div></div>
+                                        {DAYS.map((day) => (
+                                            <div key={day} className="text-center text-xs font-bold text-gray-500 py-2 min-w-[40px]">
+                                                {day}
+                                            </div>
+                                        ))}
+
+                                        {/* Time rows */}
+                                        {TIME_SLOTS.map(time => (
+                                            <>
+                                                <div key={`label-${time}`} className="text-xs text-gray-400 py-2 pr-2 text-right">
+                                                    {time}
+                                                </div>
+                                                {DAYS.map((_, dayIdx) => (
+                                                    <button
+                                                        key={`${dayIdx}-${time}`}
+                                                        onClick={() => toggleSlot(dayIdx, time)}
+                                                        className={`w-10 h-10 rounded-lg transition ${isSlotSelected(dayIdx, time)
+                                                            ? 'bg-green-500 text-white'
+                                                            : 'bg-gray-100 hover:bg-gray-200'
+                                                            }`}
+                                                    >
+                                                        {isSlotSelected(dayIdx, time) && <i className="fa-solid fa-check text-xs"></i>}
+                                                    </button>
+                                                ))}
+                                            </>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Blocked Dates */}
+                            {validFrom && validUntil && weeklySlots.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-3">
+                                        Block Specific Dates
+                                        <span className="font-normal text-gray-400 ml-2">(click to toggle off)</span>
+                                    </label>
+                                    <div className="bg-gray-50 rounded-xl p-4 max-h-48 overflow-y-auto">
+                                        <div className="flex flex-wrap gap-2">
+                                            {generateDateRange().filter(d => isDateAvailable(d)).slice(0, 30).map(date => (
+                                                <button
+                                                    key={date}
+                                                    onClick={() => toggleBlockedDate(date)}
+                                                    className={`px-3 py-1 rounded-full text-sm font-medium transition ${blockedDates.includes(date)
+                                                        ? 'bg-red-100 text-red-700 line-through'
+                                                        : 'bg-green-100 text-green-700'
+                                                        }`}
+                                                >
+                                                    {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {generateDateRange().filter(d => isDateAvailable(d)).length > 30 && (
+                                            <p className="text-xs text-gray-400 mt-2">Showing first 30 available dates</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {error && (
-                            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm">{error}</div>
+                            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm">
+                                <i className="fa-solid fa-exclamation-circle mr-2"></i>{error}
+                            </div>
                         )}
 
                         <div className="flex justify-between pt-4">
                             <button onClick={() => setStep(1)} className="pl-btn pl-btn-secondary">
-                                <i className="fa-solid fa-arrow-left mr-2"></i> Back
-                            </button>
-                            <button
-                                onClick={() => setStep(3)}
-                                disabled={(sessionType !== 'online' && venues.length === 0) || ((sessionType === 'online' || sessionType === 'both') && !meetLink)}
-                                className="pl-btn pl-btn-primary disabled:opacity-50"
-                            >
-                                Continue <i className="fa-solid fa-arrow-right ml-2"></i>
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 3: Pricing */}
-                {step === 3 && (
-                    <div className="space-y-6">
-                        <div>
-                            <h2 className="text-2xl font-black mb-2">Set Your Price</h2>
-                            <p className="text-gray-500">Choose a fair price for your time.</p>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Price (¥)</label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">¥</span>
-                                <input
-                                    type="number"
-                                    value={price}
-                                    onChange={(e) => setPrice(Number(e.target.value))}
-                                    min={500}
-                                    max={10000}
-                                    step={100}
-                                    className="w-full p-4 pl-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent text-2xl font-bold"
-                                />
-                            </div>
-                            <div className="flex justify-between text-xs text-gray-400 mt-2">
-                                <span>Min ¥500</span>
-                                <span>You'll receive ¥{Math.round(price * 0.85).toLocaleString()} after 15% fee</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Duration</label>
-                            <div className="grid grid-cols-4 gap-2">
-                                {durations.map(d => (
-                                    <button
-                                        key={d}
-                                        onClick={() => setDuration(d)}
-                                        className={`py-3 rounded-xl font-bold transition ${duration === d ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                                    >
-                                        {d}min
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-between pt-4">
-                            <button onClick={() => setStep(2)} className="pl-btn pl-btn-secondary">
-                                <i className="fa-solid fa-arrow-left mr-2"></i> Back
-                            </button>
-                            <button onClick={() => setStep(4)} className="pl-btn pl-btn-primary">
-                                Continue <i className="fa-solid fa-arrow-right ml-2"></i>
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 4: Availability Schedule */}
-                {step === 4 && (
-                    <div className="space-y-6">
-                        <div>
-                            <h2 className="text-2xl font-black mb-2">Set Your Availability</h2>
-                            <p className="text-gray-500">Choose when you're available to host.</p>
-                        </div>
-
-                        {/* Date Range */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Start Date</label>
-                                <input
-                                    type="date"
-                                    value={validFrom}
-                                    onChange={(e) => setValidFrom(e.target.value)}
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">End Date</label>
-                                <input
-                                    type="date"
-                                    value={validUntil}
-                                    onChange={(e) => setValidUntil(e.target.value)}
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Weekly Schedule Grid */}
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-3">
-                                Weekly Schedule
-                                <span className="font-normal text-gray-400 ml-2">(click to toggle)</span>
-                            </label>
-                            <div className="overflow-x-auto">
-                                <div className="inline-grid gap-1" style={{ gridTemplateColumns: 'auto repeat(7, 1fr)' }}>
-                                    {/* Header row */}
-                                    <div></div>
-                                    {DAYS.map((day, idx) => (
-                                        <div key={day} className="text-center text-xs font-bold text-gray-500 py-2 min-w-[40px]">
-                                            {day}
-                                        </div>
-                                    ))}
-
-                                    {/* Time rows */}
-                                    {TIME_SLOTS.map(time => (
-                                        <>
-                                            <div key={`label-${time}`} className="text-xs text-gray-400 py-2 pr-2 text-right">
-                                                {time}
-                                            </div>
-                                            {DAYS.map((_, dayIdx) => (
-                                                <button
-                                                    key={`${dayIdx}-${time}`}
-                                                    onClick={() => toggleSlot(dayIdx, time)}
-                                                    className={`w-10 h-10 rounded-lg transition ${isSlotSelected(dayIdx, time)
-                                                        ? 'bg-green-500 text-white'
-                                                        : 'bg-gray-100 hover:bg-gray-200'
-                                                        }`}
-                                                >
-                                                    {isSlotSelected(dayIdx, time) && <i className="fa-solid fa-check text-xs"></i>}
-                                                </button>
-                                            ))}
-                                        </>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Blocked Dates (simplified) */}
-                        {validFrom && validUntil && weeklySlots.length > 0 && (
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-3">
-                                    Block Specific Dates
-                                    <span className="font-normal text-gray-400 ml-2">(click to toggle off)</span>
-                                </label>
-                                <div className="bg-gray-50 rounded-xl p-4 max-h-48 overflow-y-auto">
-                                    <div className="flex flex-wrap gap-2">
-                                        {generateDateRange().filter(d => isDateAvailable(d)).slice(0, 30).map(date => (
-                                            <button
-                                                key={date}
-                                                onClick={() => toggleBlockedDate(date)}
-                                                className={`px-3 py-1 rounded-full text-sm font-medium transition ${blockedDates.includes(date)
-                                                    ? 'bg-red-100 text-red-700 line-through'
-                                                    : 'bg-green-100 text-green-700'
-                                                    }`}
-                                            >
-                                                {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    {generateDateRange().filter(d => isDateAvailable(d)).length > 30 && (
-                                        <p className="text-xs text-gray-400 mt-2">Showing first 30 available dates</p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {error && (
-                            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm">{error}</div>
-                        )}
-
-                        <div className="flex justify-between pt-4">
-                            <button onClick={() => setStep(3)} className="pl-btn pl-btn-secondary">
                                 <i className="fa-solid fa-arrow-left mr-2"></i> Back
                             </button>
                             <button
@@ -788,7 +982,7 @@ export default function NewLocationPage() {
                                 {loading ? (
                                     <><i className="fa-solid fa-spinner fa-spin mr-2"></i>Creating...</>
                                 ) : (
-                                    <><i className="fa-solid fa-check mr-2"></i>Create Location</>
+                                    <><i className="fa-solid fa-check mr-2"></i>Create Event</>
                                 )}
                             </button>
                         </div>
