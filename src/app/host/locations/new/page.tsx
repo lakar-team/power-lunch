@@ -536,7 +536,7 @@ export default function NewLocationPage() {
         if (!locationArea.trim()) return false
 
         const hasValidVenues = venues.length > 0 && venues.every(v => v.name.trim())
-        const hasOnline = allowOnline && meetLink.trim()
+        const hasOnline = allowOnline && meetLink.trim().length > 0
 
         // Must have at least venues or online option
         return hasValidVenues || hasOnline
