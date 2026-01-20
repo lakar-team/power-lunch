@@ -163,14 +163,6 @@ export default function SettingsPage() {
                     <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Account</h2>
 
                     <div className="space-y-3">
-                        <Link href="/profile/edit" className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition">
-                            <div className="flex items-center">
-                                <i className="fa-solid fa-user-pen text-blue-500 mr-3"></i>
-                                <span className="font-medium">Edit Profile</span>
-                            </div>
-                            <i className="fa-solid fa-chevron-right text-gray-300"></i>
-                        </Link>
-
                         <Link href="/terms" className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition">
                             <div className="flex items-center">
                                 <i className="fa-solid fa-file-contract text-gray-500 mr-3"></i>

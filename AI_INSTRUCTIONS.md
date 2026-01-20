@@ -191,6 +191,14 @@ export async function GET(request: NextRequest) {
 > **AI Agents**: Add your significant changes here!
 
 ### 2026-01-20
+- **Profile Page Restructure**: Consolidated into 4 tabs
+  - Tab 1: Edit Profile (inline form - moved from settings)
+  - Tab 2: My Plans (bookings as guest)
+  - Tab 3: Hosting (simplified - just events, no profile creation)
+  - Tab 4: Wallet (inline - moved from /wallet page)
+  - Removed Edit Profile from settings page
+  - File: `src/app/profile/page.tsx`
+
 - **Event Creation Redesign**: Combined 4-step wizard into 2 steps
   - Step 1: Location + Venues (with 1km radius circle, click-to-add venue pins)
   - Step 2: Schedule + Pricing
