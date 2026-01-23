@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
 
         // Verify user is a participant
         const isGuest = booking.guest_id === user.id
-        const isHost = booking.host?.user_id === user.id
+        const hostData = booking.host as any
+        const isHost = hostData?.user_id === user.id
 
         if (!isGuest && !isHost) {
             return NextResponse.json({
@@ -148,7 +149,8 @@ export async function GET(request: NextRequest) {
     }
 
     const isGuest = booking.guest_id === user.id
-    const isHost = booking.host?.user_id === user.id
+    const hostData = booking.host as any
+    const isHost = hostData?.user_id === user.id
 
     if (!isGuest && !isHost) {
         return NextResponse.json({
