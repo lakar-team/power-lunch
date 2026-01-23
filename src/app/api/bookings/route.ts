@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ bookings })
 }
 
-// POST /api/bookings - Create a new booking
+// POST /api/bookings - Create a new booking with upfront payment (authorization hold)
 export async function POST(request: NextRequest) {
     const supabase = createServerClient()
 
@@ -96,23 +96,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Get listing details
-    type ListingWithHost = {
-        id: string
-        price_yen: number
-        duration_minutes: number
-        host: { id: string; user_id: string; stripe_account_id: string | null }
-    }
+    // Get listing details with host info
     const { data: listing, error: listingError } = await supabase
         .from('listings')
         .select(`
-      *,
-      host:hosts (
-        id,
-        user_id,
-        stripe_account_id
-      )
-    `)
+            *,
+            host:hosts (
+                id,
+                user_id,
+                stripe_account_id
+            )
+        `)
         .eq('id', body.listing_id)
         .single()
 
@@ -120,15 +114,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
     }
 
-    const listingHost = listing.host
+    const listingHost = listing.host as { id: string; user_id: string; stripe_account_id: string | null }
 
     // Prevent booking own listing
     if (listingHost.user_id === user.id) {
         return NextResponse.json({ error: 'Cannot book your own listing' }, { status: 400 })
     }
 
-    // NOTE: We no longer require Stripe setup here - booking will be pending_host_accept
-    // Payment is created when host accepts the booking
+    // REQUIRE host to have Stripe account for upfront payment
+    if (!listingHost.stripe_account_id) {
+        return NextResponse.json({
+            error: 'Host not ready for bookings',
+            details: 'This host has not completed their payment setup yet.'
+        }, { status: 400 })
+    }
 
     // Calculate end time based on duration
     const startTime = body.start_time
@@ -137,12 +136,28 @@ export async function POST(request: NextRequest) {
     endDate.setHours(hours, minutes + listing.duration_minutes)
     const endTime = endDate.toTimeString().slice(0, 5)
 
-    // Generate QR code hash using dedicated secret
+    // Calculate host response deadline
+    // Min of (72 hours from now) OR (2 hours before event start)
+    const now = new Date()
+    const maxDeadline = new Date(now.getTime() + 72 * 60 * 60 * 1000) // 72 hours
+    const eventStart = new Date(`${body.booking_date}T${startTime}:00`)
+    const minDeadline = new Date(eventStart.getTime() - 2 * 60 * 60 * 1000) // 2 hours before
+    const hostResponseDeadline = maxDeadline < minDeadline ? maxDeadline : minDeadline
+
+    // Check if deadline is already passed (booking too close to event time)
+    if (hostResponseDeadline <= now) {
+        return NextResponse.json({
+            error: 'Booking too close to event time',
+            details: 'Bookings must be made at least 2 hours before the event start time.'
+        }, { status: 400 })
+    }
+
+    // Generate QR code hash
     const qrSecret = process.env.QR_SECRET || process.env.STRIPE_WEBHOOK_SECRET || 'default-qr-salt'
     const randomPart = Math.random().toString(36).substring(2, 10)
     const qrCodeHash = await generateSecureHash(`${body.listing_id}:${body.booking_date}:${Date.now()}:${qrSecret}:${randomPart}`)
 
-    // Create booking with pending_host_accept status (no payment yet)
+    // Create booking first (in pending_payment status)
     const bookingData = {
         listing_id: body.listing_id,
         guest_id: user.id,
@@ -153,8 +168,10 @@ export async function POST(request: NextRequest) {
         venue_selected: body.venue_selected,
         guest_note: body.guest_note,
         qr_code_hash: qrCodeHash,
-        status: 'pending' as const, // Host needs to accept
+        status: 'pending_payment',
+        host_response_deadline: hostResponseDeadline.toISOString(),
     }
+
     const { data: booking, error: bookingError } = await supabase
         .from('bookings' as any)
         .insert(bookingData as any)
@@ -165,9 +182,58 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: bookingError?.message || 'Failed to create booking' }, { status: 500 })
     }
 
+    // Create Payment Intent with authorization hold
+    const { createPaymentIntentWithHold, calculateFees } = await import('@/lib/stripe')
+
+    let paymentIntent
+    try {
+        paymentIntent = await createPaymentIntentWithHold(
+            listing.price_yen,
+            listingHost.stripe_account_id,
+            booking.id
+        )
+    } catch (stripeError: any) {
+        // Clean up booking if payment intent creation fails
+        await supabase.from('bookings').delete().eq('id', booking.id)
+        console.error('[bookings] Stripe error:', stripeError.message)
+        return NextResponse.json({
+            error: 'Payment setup failed',
+            details: stripeError.message
+        }, { status: 500 })
+    }
+
+    // Update booking with payment intent ID
+    await supabase
+        .from('bookings')
+        .update({
+            stripe_payment_intent_id: paymentIntent.id
+        } as any)
+        .eq('id', booking.id)
+
+    // Create transaction record
+    const fees = calculateFees(listing.price_yen)
+    await supabase
+        .from('transactions')
+        .insert({
+            booking_id: booking.id,
+            amount_yen: fees.totalAmount,
+            platform_fee_yen: fees.platformFee,
+            host_payout_yen: fees.hostPayout,
+            stripe_charge_id: paymentIntent.id,
+            status: 'pending',
+        } as any)
+
+    console.log('[bookings] Created booking with payment hold:', booking.id)
+
+    // Return client_secret for guest to complete payment
     return NextResponse.json({
-        booking,
-        qrCode: `PL-${qrCodeHash}-JP`,
-        message: 'Booking request sent. Waiting for host to accept.',
+        booking: {
+            ...booking,
+            stripe_payment_intent_id: paymentIntent.id,
+        },
+        client_secret: paymentIntent.client_secret,
+        amount_yen: listing.price_yen,
+        host_response_deadline: hostResponseDeadline.toISOString(),
+        message: 'Complete payment to send your booking request to the host.',
     }, { status: 201 })
 }

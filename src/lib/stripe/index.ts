@@ -53,8 +53,9 @@ export async function createConnectedAccount(email: string) {
     return account.id
 }
 
-// Create Payment Intent with destination charge (split payment)
-export async function createPaymentIntent(
+// Create Payment Intent with authorization hold (capture later when host accepts)
+// This is the PRIMARY method for bookings - guest pays upfront, money held until host accepts
+export async function createPaymentIntentWithHold(
     amountYen: number,
     hostStripeAccountId: string,
     bookingId: string
@@ -63,6 +64,32 @@ export async function createPaymentIntent(
 
     const paymentIntent = await stripe.paymentIntents.create({
         amount: amountYen, // Stripe uses smallest currency unit (yen = 1)
+        currency: 'jpy',
+        payment_method_types: ['card'],
+        capture_method: 'manual', // Authorization only - capture when host accepts
+        transfer_data: {
+            destination: hostStripeAccountId,
+            amount: hostPayout,
+        },
+        metadata: {
+            booking_id: bookingId,
+            platform_fee: platformFee.toString(),
+        },
+    })
+
+    return paymentIntent
+}
+
+// Legacy: Create Payment Intent with immediate capture (kept for backwards compatibility)
+export async function createPaymentIntent(
+    amountYen: number,
+    hostStripeAccountId: string,
+    bookingId: string
+) {
+    const { platformFee, hostPayout } = calculateFees(amountYen)
+
+    const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountYen,
         currency: 'jpy',
         payment_method_types: ['card'],
         transfer_data: {
@@ -75,6 +102,18 @@ export async function createPaymentIntent(
         },
     })
 
+    return paymentIntent
+}
+
+// Capture an authorized payment (called when host accepts booking)
+export async function capturePayment(paymentIntentId: string) {
+    const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId)
+    return paymentIntent
+}
+
+// Cancel/release an authorization hold (called when host declines or booking expires)
+export async function cancelPaymentIntent(paymentIntentId: string) {
+    const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId)
     return paymentIntent
 }
 

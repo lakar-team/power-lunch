@@ -5,6 +5,38 @@
 
 ---
 
+## 🗺️ Documentation Strategy
+
+To avoid contradictions, the project uses a three-tier documentation system:
+
+1. **[AI_INSTRUCTIONS.md](file:///g:/My%20Drive/AI%20Platforms/Power%20Lunch/AI_INSTRUCTIONS.md)** (This file): **The Living Source of Truth.** Contains immediate technical rules, recent architectural shifts, and agent-specific constraints.
+2. **[README.md](file:///g:/My%20Drive/AI%20Platforms/Power%20Lunch/README.md)**: **The Developer Onboarding.** Summarizes how to work with the repo, critical development warnings, and the current project layout.
+3. **[PRODUCTION_GUIDE.md](file:///g:/My%20Drive/AI%20Platforms/Power%20Lunch/docs/PRODUCTION_GUIDE.md)**: **The Master Roadmap.** Outlines the long-term path to launch, including compliance, safety phases, and production checklists.
+
+---
+
+## 🚀 Current Project Focus
+
+**Next Major Goal:** Phase 7 - Core Features Development (QR Verification, Reviews, Testing).
+
+**Recently Completed (Phase 6 - Payment Integration):**
+- [x] Upfront payment flow with authorization holds
+- [x] Host response deadline (72h or 2h before event)
+- [x] Auto-expiry system for unresponsive hosts
+- [x] Email notifications via SendGrid for booking lifecycle
+- [x] Stripe webhook handling for payment events
+
+**Current Active Tasks (from [PRODUCTION_GUIDE.md](file:///g:/My%20Drive/AI%20Platforms/Power%20Lunch/docs/PRODUCTION_GUIDE.md)):**
+- [x] QR Code verification system for session check-in
+- [x] Review and rating system post-session
+- [x] Real-time messaging (day-of chat)
+- [ ] End-to-end testing with Stripe test keys
+
+> [!TIP]
+> **AI Agents**: When starting a session, review this section first. Mark tasks as done here AND in the `PRODUCTION_GUIDE.md` when completed.
+
+---
+
 ## 📋 Quick Reference
 
 | Item | Value |
@@ -189,6 +221,32 @@ export async function GET(request: NextRequest) {
 ## 📝 Recent Changes Log
 
 > **AI Agents**: Add your significant changes here!
+
+### 2026-01-22
+- **Payment Integration Hardening**: Completed Phase 6
+  - Added `/api/bookings/[id]/accept/route.ts` - Host accepts pending booking, creates Payment Intent
+  - Added `/api/bookings/[id]/cancel/route.ts` - Cancel with automatic refund processing
+  - Added `CheckoutForm.tsx` - Stripe Elements payment form component
+  - Added `/bookings/[id]/page.tsx` - Booking detail page with payment flow
+  - Updated documentation strategy and consolidated conflicting plans
+
+- **Upfront Payment Flow (Major Refactor)**: Changed booking flow so guests pay first
+  - Guest pays upfront → money held (authorization)
+  - Host has deadline to accept (72h or 2h before event)
+  - Host accepts → payment captured
+  - Host declines → payment released
+  - Auto-expire for unresponsive hosts
+  - New files:
+    - `src/lib/email/index.ts` - SendGrid email service
+    - `src/app/api/bookings/[id]/decline/route.ts` - Host decline
+    - `src/app/api/bookings/expire/route.ts` - Auto-expiry cron
+    - `supabase/migrations/20260122_upfront_payment_flow.sql` - New DB columns
+  - Updated files:
+    - `src/lib/stripe/index.ts` - Added `createPaymentIntentWithHold`, `capturePayment`, `cancelPaymentIntent`
+    - `src/app/api/bookings/route.ts` - Upfront payment on creation
+    - `src/app/api/bookings/[id]/accept/route.ts` - Captures held payment
+    - `src/app/api/bookings/[id]/cancel/route.ts` - Handles refund/release
+    - `src/app/api/webhooks/stripe/route.ts` - New events for auth flow
 
 ### 2026-01-20
 - **Profile Page Restructure**: Consolidated into 4 tabs

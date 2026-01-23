@@ -475,15 +475,24 @@ function ProfilePageContent() {
                             </div>
                         ) : (
                             <>
-                                {/* Create New Event Button */}
-                                <div className="flex justify-between items-center mb-4">
-                                    <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">My Events</h2>
+                                {/* Scan & Create Section */}
+                                <div className="flex flex-col gap-3 mb-6">
                                     <Link
-                                        href="/host/locations/new"
-                                        className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center"
+                                        href="/host/scan"
+                                        className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold flex items-center justify-center shadow-lg hover:bg-blue-700 transition"
                                     >
-                                        <i className="fa-solid fa-plus mr-1"></i> New Event
+                                        <i className="fa-solid fa-qrcode mr-2 text-xl"></i> Scan Guest Code
                                     </Link>
+
+                                    <div className="flex justify-between items-center px-1">
+                                        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">My Events</h2>
+                                        <Link
+                                            href="/host/locations/new"
+                                            className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center"
+                                        >
+                                            <i className="fa-solid fa-plus mr-1"></i> New Event
+                                        </Link>
+                                    </div>
                                 </div>
 
                                 {pins.length === 0 ? (
