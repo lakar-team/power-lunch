@@ -67,7 +67,7 @@ function PaymentForm({
     return (
         <form onSubmit={handleSubmit} className="checkout-form">
             <div className="checkout-header">
-                <h3>{t('payment') || 'Payment'}</h3>
+                <h3>Payment</h3>
                 <p className="checkout-amount">
                     ¥{amountYen.toLocaleString()}
                 </p>
@@ -96,13 +96,13 @@ function PaymentForm({
                     <span className="loading-spinner" />
                 ) : (
                     <>
-                        {t('payNow') || 'Pay Now'} ¥{amountYen.toLocaleString()}
+                        Pay Now ¥{amountYen.toLocaleString()}
                     </>
                 )}
             </button>
 
             <p className="checkout-secure-note">
-                🔒 {t('securePayment') || 'Secure payment powered by Stripe'}
+                🔒 Secure payment powered by Stripe
             </p>
 
             <style jsx>{`
