@@ -116,7 +116,7 @@ export async function POST(
             await supabase
                 .from('transactions')
                 .update({
-                    status: refundResult ? 'refunded' : 'cancelled',
+                    status: paymentAction === 'refunded' ? 'refunded' : 'cancelled',
                 } as any)
                 .eq('booking_id', bookingId)
         }
@@ -126,7 +126,7 @@ export async function POST(
         return NextResponse.json({
             success: true,
             message: 'Booking cancelled successfully.',
-            refunded: !!refundResult,
+            refunded: paymentAction === 'refunded',
             cancelled_by: cancelledBy,
         })
     } catch (err: any) {
