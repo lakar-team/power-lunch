@@ -112,7 +112,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
 
         // Fetch existing messages
         async function fetchMessages() {
-            const res = await fetch(`/api/messages?booking_id=${booking.id}`)
+            const res = await fetch(`/api/messages?booking_id=${booking!.id}`)
             const data = await res.json()
             if (data.messages) {
                 setMessages(data.messages)
