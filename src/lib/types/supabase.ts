@@ -92,6 +92,8 @@ export interface Booking {
     status: string
     created_at: string
     listing?: Listing
+    host_location_id?: string
+    host_location?: HostLocation
     host?: Host
     guest?: Profile
 }
