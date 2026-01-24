@@ -196,6 +196,7 @@ export default function SearchPage() {
                 iconAnchor: [20, 40]
             })
 
+            const marker = L.marker([location.location_lat, location.location_lng], { icon }).addTo(map)
             marker.on('click', () => {
                 window.location.href = `/listing/${location.id}`
             })
