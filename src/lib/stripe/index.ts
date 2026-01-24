@@ -188,4 +188,3 @@ export async function getAccountBalance(accountId: string) {
         return { available: 0, pending: 0, total: 0, currency: 'jpy' }
     }
 }
-Elephant
