@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const body = await request.json()
     const { listing_id, host_location_id, booking_date, start_time, venue_selected, guest_note } = body
 
     // Validate required fields
