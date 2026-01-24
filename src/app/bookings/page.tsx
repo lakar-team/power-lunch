@@ -110,8 +110,8 @@ export default function BookingsPage() {
                                                         {formatDate(booking.booking_date)}
                                                     </span>
                                                     <span className={`text-[8px] font-bold px-2 py-0.5 rounded ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                                                            booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-gray-100 text-gray-700'
+                                                        booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-gray-100 text-gray-700'
                                                         }`}>
                                                         {booking.status.toUpperCase()}
                                                     </span>
@@ -123,7 +123,7 @@ export default function BookingsPage() {
                                                         alt="Host"
                                                     />
                                                     <div>
-                                                        <h3 className="font-bold text-lg leading-tight line-clamp-1">{booking.listing?.title || 'Session'}</h3>
+                                                        <h3 className="font-bold text-lg leading-tight line-clamp-1">{booking.listing?.title || booking.host_location?.name || 'Session'}</h3>
                                                         <p className="text-xs text-gray-500">with {booking.host?.profile?.full_name || 'Host'}</p>
                                                     </div>
                                                 </div>
@@ -148,11 +148,11 @@ export default function BookingsPage() {
                                                             <i className={`fa-solid ${booking.status === 'cancelled' ? 'fa-xmark' : 'fa-check'}`}></i>
                                                         </div>
                                                         <div>
-                                                            <h3 className="font-bold text-sm text-gray-700">{booking.listing?.title || 'Session'}</h3>
+                                                            <h3 className="font-bold text-sm text-gray-700">{booking.listing?.title || booking.host_location?.name || 'Session'}</h3>
                                                             <p className="text-[10px] text-gray-400">{formatDate(booking.booking_date)} • {booking.status}</p>
                                                         </div>
                                                     </div>
-                                                    <Link href={`/listing/${booking.listing_id}`} className="text-xs font-bold text-black border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+                                                    <Link href={`/listing/${booking.listing_id || booking.host_location_id}`} className="text-xs font-bold text-black border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
                                                         Rebook
                                                     </Link>
                                                 </div>

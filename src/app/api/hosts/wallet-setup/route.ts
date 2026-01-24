@@ -131,8 +131,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get detailed Stripe account status
-    const { getAccountStatus, createDashboardLink } = await import('@/lib/stripe')
+    const { getAccountStatus, createDashboardLink, getAccountBalance } = await import('@/lib/stripe')
     const accountStatus = await getAccountStatus(host.stripe_account_id)
+    const balanceInfo = await getAccountBalance(host.stripe_account_id)
 
     // Get dashboard link if account is set up
     let dashboardUrl: string | null = null
@@ -148,6 +149,7 @@ export async function GET(request: NextRequest) {
         is_host: true,
         has_stripe: true,
         wallet_ready: accountStatus.charges_enabled && accountStatus.payouts_enabled,
+        balance: balanceInfo,
         stripe_status: {
             details_submitted: accountStatus.details_submitted,
             charges_enabled: accountStatus.charges_enabled,

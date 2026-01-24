@@ -65,12 +65,12 @@ export default function TicketPage({ params }: { params: { id: string } }) {
     const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
     // Get venue name safely
-    const venueName = booking.listing?.venue_options?.find((v: any) => v.id === booking.venue_selected)?.name || 'Selected Venue'
-
+    const venueOptions = booking.listing?.venue_options || (booking as any).host_location?.venue_options
+    const venueName = venueOptions?.find((v: any) => v.id === booking.venue_selected)?.name || 'Selected Venue'
     // Get host details safely using any type for now to avoid strict typing issues with nested relations
     const hostName = (booking.host as any)?.profile?.full_name || 'Host'
     const hostAvatar = (booking.host as any)?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(hostName)}&background=0D8ABC&color=fff`
-    const listingTitle = booking.listing?.title || 'Power Lunch Session'
+    const listingTitle = booking.listing?.title || (booking as any).host_location?.name || 'Power Lunch Session'
 
     return (
         <div className="bg-gray-100 font-sans text-gray-900 min-h-screen pb-24">

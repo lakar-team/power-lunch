@@ -143,21 +143,7 @@ function OnboardContent() {
                     <p className="text-xs text-gray-400 mt-1">{bio.length}/500 characters</p>
                 </div>
 
-                <div className="flex justify-between pt-4">
-                    <button
-                        onClick={() => setStep('intro')}
-                        className="pl-btn pl-btn-secondary"
-                    >
-                        <i className="fa-solid fa-arrow-left mr-2"></i> Back
-                    </button>
-                    <button
-                        onClick={() => setStep('topics')}
-                        disabled={bio.length < 20}
-                        className="pl-btn pl-btn-primary disabled:opacity-50"
-                    >
-                        Continue <i className="fa-solid fa-arrow-right ml-2"></i>
-                    </button>
-                </div>
+                <div className="pt-4 h-12"></div>
             </div>
         </div>
     )
@@ -265,25 +251,7 @@ function OnboardContent() {
                 </div>
             )}
 
-            <div className="flex justify-between">
-                <button
-                    onClick={() => setStep('profile')}
-                    className="pl-btn pl-btn-secondary"
-                >
-                    <i className="fa-solid fa-arrow-left mr-2"></i> Back
-                </button>
-                <button
-                    onClick={handleCompleteOnboarding}
-                    disabled={selectedTopics.length === 0 || loading}
-                    className="pl-btn pl-btn-primary disabled:opacity-50"
-                >
-                    {loading ? (
-                        <><i className="fa-solid fa-spinner fa-spin mr-2"></i> Creating...</>
-                    ) : (
-                        <>Complete <i className="fa-solid fa-check ml-2"></i></>
-                    )}
-                </button>
-            </div>
+            <div className="h-12"></div>
         </div>
     )
 
@@ -367,12 +335,47 @@ function OnboardContent() {
             )}
 
             {/* Main Content */}
-            <main className="px-4 py-12">
+            <main className="px-4 py-8 pb-32">
                 {step === 'intro' && renderIntro()}
                 {step === 'profile' && renderProfile()}
                 {step === 'topics' && renderTopics()}
                 {step === 'complete' && renderComplete()}
             </main>
+
+            {/* Sticky Navigation Footer */}
+            {step !== 'intro' && step !== 'complete' && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-40">
+                    <div className="max-w-lg mx-auto flex justify-between">
+                        <button
+                            onClick={() => setStep(step === 'profile' ? 'intro' : 'profile')}
+                            className="pl-btn pl-btn-secondary"
+                        >
+                            <i className="fa-solid fa-arrow-left mr-2"></i> Back
+                        </button>
+                        {step === 'profile' ? (
+                            <button
+                                onClick={() => setStep('topics')}
+                                disabled={bio.length < 20}
+                                className="pl-btn pl-btn-primary disabled:opacity-50"
+                            >
+                                Continue <i className="fa-solid fa-arrow-right ml-2"></i>
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleCompleteOnboarding}
+                                disabled={selectedTopics.length === 0 || loading}
+                                className="pl-btn pl-btn-primary disabled:opacity-50"
+                            >
+                                {loading ? (
+                                    <><i className="fa-solid fa-spinner fa-spin mr-2"></i> Creating...</>
+                                ) : (
+                                    <>Complete <i className="fa-solid fa-check ml-2"></i></>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

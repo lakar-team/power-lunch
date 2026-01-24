@@ -84,20 +84,21 @@ function CheckoutContent() {
 
     // Get booking details from URL
     const listingId = searchParams.get('listing')
+    const hostLocationId = searchParams.get('host_location')
     const dateStr = searchParams.get('date')
     const time = searchParams.get('time')
     const venueId = searchParams.get('venue')
 
     useEffect(() => {
         async function initializeCheckout() {
-            if (!listingId || !dateStr || !time || !venueId) {
-                setError('Missing booking details')
+            if ((!listingId && !hostLocationId) || !dateStr || !time || !venueId) {
+                setError('Missing booking details' + (!listingId && !hostLocationId ? ' (ID)' : ''))
                 setLoading(false)
                 return
             }
 
             // 1. Fetch Listing Details
-            const { listing: listingData, error: listingError } = await getListing(listingId)
+            const { listing: listingData, error: listingError } = await getListing((listingId || hostLocationId)!)
 
             if (listingError || !listingData) {
                 setError(listingError || 'Listing not found')
@@ -108,10 +109,10 @@ function CheckoutContent() {
             setListing(listingData)
 
             // 2. Create Pending Booking & Payment Intent
-            // (Only if we haven't already - simplistic check for ref consistency)
             if (!clientSecret) {
                 const bookingData = {
-                    listing_id: listingId,
+                    listing_id: listingId || undefined,
+                    host_location_id: hostLocationId || undefined,
                     booking_date: dateStr.split('T')[0], // Extract YYYY-MM-DD
                     start_time: time,
                     venue_selected: venueId,

@@ -165,3 +165,27 @@ export async function createDashboardLink(accountId: string) {
     const loginLink = await stripe.accounts.createLoginLink(accountId)
     return loginLink.url
 }
+
+// Get account balance
+export async function getAccountBalance(accountId: string) {
+    try {
+        const balance = await stripe.balance.retrieve({
+            stripeAccount: accountId,
+        })
+
+        // Sum up available and pending amounts
+        const available = balance.available.reduce((sum, b) => sum + b.amount, 0)
+        const pending = balance.pending.reduce((sum, b) => sum + b.amount, 0)
+
+        return {
+            available,
+            pending,
+            total: available + pending,
+            currency: balance.available[0]?.currency || 'jpy',
+        }
+    } catch (error: any) {
+        console.error('[stripe] getAccountBalance error:', error.message)
+        return { available: 0, pending: 0, total: 0, currency: 'jpy' }
+    }
+}
+Elephant

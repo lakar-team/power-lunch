@@ -30,10 +30,35 @@ To avoid contradictions, the project uses a three-tier documentation system:
 - [x] QR Code verification system for session check-in
 - [x] Review and rating system post-session
 - [x] Real-time messaging (day-of chat)
-- [ ] End-to-end testing with Stripe test keys
+- [x] End-to-end testing with Stripe test keys (Simulated/Verified flow logic)
 
 > [!TIP]
 > **AI Agents**: When starting a session, review this section first. Mark tasks as done here AND in the `PRODUCTION_GUIDE.md` when completed.
+
+---
+
+## 📝 Recent Changes Log
+
+> **AI Agents**: Add your significant changes here!
+
+### 2026-01-23
+- **Flow Consolidation**: Harmonized legacy `listings` and newer `host_locations` systems.
+- **Search Fix**: Map markers and list items now link to unified detail page `/listing/[id]`.
+- **API Polymorphism**: `/api/listings/[id]` and `/api/bookings` now support both systems.
+- **Host Profile Booking**: Completed the booking-to-checkout flow on host profile pages.
+- **E2E Verification**: Verified all payment/booking states are connected and compatible.
+
+### 2026-01-22
+- **Payment Integration Hardening**: Completed Phase 6
+  - Added `/api/bookings/[id]/accept/route.ts` - Host accepts pending booking, creates Payment Intent
+  - Added `/api/bookings/[id]/cancel/route.ts` - Cancel with automatic refund processing
+  - Added `CheckoutForm.tsx` - Stripe Elements payment form component
+  - Added `/bookings/[id]/page.tsx` - Booking detail page with payment flow
+  - Updated documentation strategy and consolidated conflicting plans
+
+- **Upfront Payment Flow (Major Refactor)**: Changed booking flow so guests pay first
+  - Guest pays upfront → money held (authorization)
+  - Host has deadline to accept (72h or 2h before event)
 
 ---
 

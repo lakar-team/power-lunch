@@ -111,7 +111,8 @@ export interface CreateListingInput {
 }
 
 export interface CreateBookingInput {
-    listing_id: string
+    listing_id?: string
+    host_location_id?: string
     booking_date: string
     start_time: string
     venue_selected: string

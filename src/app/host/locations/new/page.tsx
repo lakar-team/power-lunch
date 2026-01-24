@@ -64,6 +64,7 @@ export default function CreateEventWizard() {
     const [centralLng, setCentralLng] = useState<number | null>(null)
     const [locationArea, setLocationArea] = useState('')
     const [searchQuery, setSearchQuery] = useState('')
+    const [useManualLocation, setUseManualLocation] = useState(false)
 
     // Step 3: Venues
     const [venues, setVenues] = useState<Venue[]>([])
@@ -233,7 +234,16 @@ export default function CreateEventWizard() {
         }
 
         setTimeout(() => map.invalidateSize(), 100)
+        setTimeout(() => map.invalidateSize(), 500) // Double tap for insurance
     }, [leafletLoaded, step, centralLat, centralLng, reverseGeocode])
+
+    // Invalidate map size on step change
+    useEffect(() => {
+        if ((step === 2 || step === 3) && mapRef.current) {
+            setTimeout(() => mapRef.current.invalidateSize(), 100)
+            setTimeout(() => mapRef.current.invalidateSize(), 300)
+        }
+    }, [step])
 
     // Distance helper
     const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -334,7 +344,7 @@ export default function CreateEventWizard() {
     const canProceed = () => {
         switch (step) {
             case 1: return title.trim().length > 0
-            case 2: return centralLat !== null && locationArea.length > 0
+            case 2: return useManualLocation ? locationArea.trim().length > 0 : (centralLat !== null && locationArea.length > 0)
             case 3: return format === 'online' || (venues.length > 0 && venues.every(v => v.name.trim()))
             case 4: return format === 'online' ? meetLink.trim().length > 0 : true
             case 5: return priceInCurrency > 0 && weeklySlots.length > 0
@@ -466,38 +476,63 @@ export default function CreateEventWizard() {
                             <p className="text-gray-500">Click on the map to set your 1km radius</p>
                         </div>
 
-                        {/* Search */}
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                onKeyPress={e => e.key === 'Enter' && searchLocation()}
-                                placeholder="Search for a location..."
-                                className="flex-1 p-3 border border-gray-200 rounded-xl"
-                            />
-                            <button onClick={searchLocation} className="px-4 bg-black text-white rounded-xl">
-                                <i className="fa-solid fa-search"></i>
+                        {/* Manual Toggle */}
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setUseManualLocation(!useManualLocation)}
+                                className="text-xs text-blue-600 hover:underline"
+                            >
+                                {useManualLocation ? 'Use map instead' : 'Map not working? Enter location manually'}
                             </button>
                         </div>
 
-                        {/* Map */}
-                        <div className="relative">
-                            <div
-                                ref={mapContainerRef}
-                                className="w-full h-96 rounded-xl overflow-hidden border border-gray-200"
-                            />
-                            {!mapReady && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-xl">
-                                    <span className="text-gray-400">Loading map...</span>
-                                </div>
-                            )}
-                            {locationArea && (
-                                <div className="absolute top-3 left-3 bg-white px-3 py-2 rounded-lg shadow text-sm font-medium">
-                                    <i className="fa-solid fa-location-dot mr-2"></i>{locationArea}
-                                </div>
-                            )}
-                        </div>
+                        {/* Search or Manual Entry */}
+                        {!useManualLocation ? (
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    onKeyPress={e => e.key === 'Enter' && searchLocation()}
+                                    placeholder="Search for a location..."
+                                    className="flex-1 p-3 border border-gray-200 rounded-xl"
+                                />
+                                <button onClick={searchLocation} className="px-4 bg-black text-white rounded-xl">
+                                    <i className="fa-solid fa-search"></i>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <input
+                                    type="text"
+                                    value={locationArea}
+                                    onChange={e => setLocationArea(e.target.value)}
+                                    placeholder="Enter area name (e.g. Shibuya, Tokyo)"
+                                    className="w-full p-3 border border-gray-200 rounded-xl font-bold"
+                                />
+                                <p className="text-xs text-gray-400">Note: Manual entry won't show a pin on the main map until we verify it.</p>
+                            </div>
+                        )}
+
+                        {/* Map (hidden if manual) */}
+                        {!useManualLocation && (
+                            <div className="relative">
+                                <div
+                                    ref={mapContainerRef}
+                                    className="w-full h-96 rounded-xl overflow-hidden border border-gray-200"
+                                />
+                                {!mapReady && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-xl">
+                                        <span className="text-gray-400">Loading map...</span>
+                                    </div>
+                                )}
+                                {locationArea && (
+                                    <div className="absolute top-3 left-3 bg-white px-3 py-2 rounded-lg shadow text-sm font-medium">
+                                        <i className="fa-solid fa-location-dot mr-2"></i>{locationArea}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 

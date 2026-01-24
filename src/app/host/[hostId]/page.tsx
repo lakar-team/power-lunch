@@ -21,6 +21,8 @@ export default function HostProfilePage() {
     const [loading, setLoading] = useState(true)
     const [selectedLocation, setSelectedLocation] = useState<HostLocation | null>(null)
     const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+    const [selectedTime, setSelectedTime] = useState<string | null>(null)
     const [bookingStep, setBookingStep] = useState<'view' | 'topic' | 'time' | 'confirm'>('view')
 
     useEffect(() => {
@@ -80,7 +82,30 @@ export default function HostProfilePage() {
 
     const handleSelectTopic = (topic: string) => {
         setSelectedTopic(topic)
+        // Default to today
+        setSelectedDate(new Date())
         setBookingStep('time')
+    }
+
+    const handlePay = () => {
+        if (!selectedLocation || !selectedDate || !selectedTime) return
+
+        // Venue defaults to the location itself if no specific venues defined, 
+        // or the first venue if they are.
+        const venueId = selectedLocation.venue_options?.[0]?.id || selectedLocation.id
+
+        const params = new URLSearchParams({
+            host_location: selectedLocation.id,
+            date: selectedDate.toISOString(),
+            time: selectedTime,
+            venue: venueId
+        })
+
+        if (selectedTopic) {
+            params.append('topic', selectedTopic)
+        }
+
+        router.push(`/checkout?${params.toString()}`)
     }
 
     if (loading) {
@@ -285,25 +310,34 @@ export default function HostProfilePage() {
                                     {[0, 1, 2].map(offset => {
                                         const date = new Date()
                                         date.setDate(date.getDate() + offset)
+                                        const isSelected = selectedDate?.toDateString() === date.toDateString()
                                         return (
                                             <button
                                                 key={offset}
-                                                className="p-3 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition border border-gray-200"
+                                                onClick={() => setSelectedDate(date)}
+                                                className={`p-3 rounded-xl text-center transition border ${isSelected
+                                                    ? 'bg-black text-white border-black'
+                                                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                                                    }`}
                                             >
-                                                <p className="text-xs text-gray-500">{date.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                                                <p className={`text-xs ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>{date.toLocaleDateString('en-US', { weekday: 'short' })}</p>
                                                 <p className="font-bold">{date.getDate()}</p>
                                             </button>
                                         )
                                     })}
                                 </div>
 
-                                {/* Time slots (placeholder) */}
+                                {/* Time slots */}
                                 <p className="text-sm font-bold text-gray-700 mb-2">Available Times</p>
                                 <div className="grid grid-cols-4 gap-2">
                                     {['11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '18:00', '18:30'].map(time => (
                                         <button
                                             key={time}
-                                            className="py-2 px-3 bg-gray-50 rounded-lg text-sm font-medium hover:bg-black hover:text-white transition border border-gray-200"
+                                            onClick={() => setSelectedTime(time)}
+                                            className={`py-2 px-3 rounded-lg text-sm font-medium transition border ${selectedTime === time
+                                                ? 'bg-black text-white border-black'
+                                                : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-black hover:text-white'
+                                                }`}
                                         >
                                             {time}
                                         </button>
@@ -312,7 +346,8 @@ export default function HostProfilePage() {
 
                                 <button
                                     onClick={() => setBookingStep('confirm')}
-                                    className="w-full mt-6 pl-btn pl-btn-primary"
+                                    disabled={!selectedDate || !selectedTime}
+                                    className="w-full mt-6 pl-btn pl-btn-primary disabled:opacity-50"
                                 >
                                     Continue to Payment
                                 </button>
@@ -345,7 +380,10 @@ export default function HostProfilePage() {
                                     </div>
                                 ) : null}
 
-                                <button className="w-full pl-btn pl-btn-success">
+                                <button
+                                    onClick={handlePay}
+                                    className="w-full pl-btn pl-btn-success"
+                                >
                                     <i className="fa-solid fa-lock mr-2"></i>
                                     Pay ¥{selectedLocation.price_yen.toLocaleString()}
                                 </button>

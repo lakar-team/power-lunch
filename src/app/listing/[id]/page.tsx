@@ -116,7 +116,8 @@ export default function ListingPage({ params }: { params: { id: string } }) {
         }
 
         // Go to checkout if authenticated
-        router.push(`/checkout?listing=${params.id}&date=${selectedDate.toISOString()}&time=${selectedTime}&venue=${selectedVenue}`)
+        const idParam = (listing as any).__type === 'host_location' ? 'host_location' : 'listing'
+        router.push(`/checkout?${idParam}=${params.id}&date=${selectedDate.toISOString()}&time=${selectedTime}&venue=${selectedVenue}`)
     }
 
     // Loading state
@@ -219,9 +220,12 @@ export default function ListingPage({ params }: { params: { id: string } }) {
                             <h3 className="font-bold text-sm text-gray-900">Hosted by {listing.host?.profile?.full_name || 'Host'}</h3>
                             <p className="text-xs text-gray-500">{listing.host?.bio || 'Power Lunch Host'}</p>
                         </div>
-                        <button className="ml-auto text-blue-600 text-xs font-bold border border-blue-100 px-3 py-1.5 rounded-full hover:bg-blue-50">
+                        <Link
+                            href={`/host/${listing.host_id}`}
+                            className="ml-auto text-blue-600 text-xs font-bold border border-blue-100 px-3 py-1.5 rounded-full hover:bg-blue-50"
+                        >
                             View Profile
-                        </button>
+                        </Link>
                     </div>
                 </section>
 

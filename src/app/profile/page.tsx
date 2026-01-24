@@ -60,6 +60,7 @@ function ProfilePageContent() {
     const [dashboardUrl, setDashboardUrl] = useState<string | null>(null)
     const [connectingStripe, setConnectingStripe] = useState(false)
     const [walletLoading, setWalletLoading] = useState(false)
+    const [balance, setBalance] = useState<{ available: number; pending: number; total: number; currency: string } | null>(null)
 
     // Handle ?tab= query param
     useEffect(() => {
@@ -164,6 +165,7 @@ function ProfilePageContent() {
                 setHasStripe(data.has_stripe || false)
                 setStripeStatus(data.stripe_status || null)
                 setDashboardUrl(data.dashboard_url || null)
+                setBalance(data.balance || null)
             } catch (e) {
                 console.error('Failed to fetch wallet status:', e)
             }
@@ -547,8 +549,13 @@ function ProfilePageContent() {
                                 <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-lg">
                                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Total Balance</h3>
                                     <div className="flex justify-between items-end">
-                                        <span className="text-4xl font-bold">¥0</span>
-                                        <span className="text-xs text-gray-400">Available for payout</span>
+                                        <span className="text-4xl font-bold">¥{balance?.available?.toLocaleString() || '0'}</span>
+                                        <div className="text-right">
+                                            <span className="text-[10px] text-gray-400 block">Available for payout</span>
+                                            {balance && balance.pending > 0 && (
+                                                <span className="text-[10px] text-yellow-400">¥{balance.pending.toLocaleString()} pending</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 

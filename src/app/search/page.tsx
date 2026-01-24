@@ -196,10 +196,8 @@ export default function SearchPage() {
                 iconAnchor: [20, 40]
             })
 
-            const marker = L.marker([location.location_lat, location.location_lng], { icon }).addTo(map)
             marker.on('click', () => {
-                // TODO: Link to host profile page
-                window.location.href = `/host/${location.host_id}`
+                window.location.href = `/listing/${location.id}`
             })
             markersRef.current.push(marker)
         })
@@ -282,7 +280,7 @@ export default function SearchPage() {
                                 .map(location => (
                                     <Link
                                         key={location.id}
-                                        href={`/host/${location.host_id}`}
+                                        href={`/listing/${location.id}`}
                                         className="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition"
                                     >
                                         <div className="flex items-start justify-between">

@@ -52,12 +52,12 @@ export async function GET(request: NextRequest) {
       `)
             .eq('host_id', hostId)
     } else {
-        // Get bookings where user is the guest
         query = supabase
             .from('bookings')
             .select(`
         *,
         listing:listings (*),
+        host_location:host_locations (*),
         host:hosts (
           *,
           profile:profiles (*)
@@ -89,40 +89,62 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
+    const { listing_id, host_location_id, booking_date, start_time, venue_selected, guest_note } = body
 
     // Validate required fields
-    if (!body.listing_id || !body.booking_date || !body.start_time) {
+    if ((!listing_id && !host_location_id) || !booking_date || !start_time) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Get listing details with host info
-    const { data: listing, error: listingError } = await supabase
-        .from('listings')
-        .select(`
-            *,
-            host:hosts (
-                id,
-                user_id,
-                stripe_account_id
-            )
-        `)
-        .eq('id', body.listing_id)
-        .single()
+    // Get item details (from either listings or host_locations) with host info
+    let item: any
+    let itemError: any
 
-    if (listingError || !listing) {
-        return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
+    if (listing_id) {
+        const { data, error } = await supabase
+            .from('listings')
+            .select(`
+                *,
+                host:hosts (
+                    id,
+                    user_id,
+                    stripe_account_id
+                )
+            `)
+            .eq('id', listing_id)
+            .single()
+        item = data
+        itemError = error
+    } else {
+        const { data, error } = await supabase
+            .from('host_locations')
+            .select(`
+                *,
+                host:hosts (
+                    id,
+                    user_id,
+                    stripe_account_id
+                )
+            `)
+            .eq('id', host_location_id)
+            .single()
+        item = data
+        itemError = error
     }
 
-    const listingHost = listing.host as { id: string; user_id: string; stripe_account_id: string | null }
+    if (itemError || !item) {
+        return NextResponse.json({ error: 'Listing or Location not found' }, { status: 404 })
+    }
+
+    const itemHost = item.host as { id: string; user_id: string; stripe_account_id: string | null }
 
     // Prevent booking own listing
-    if (listingHost.user_id === user.id) {
+    if (itemHost.user_id === user.id) {
         return NextResponse.json({ error: 'Cannot book your own listing' }, { status: 400 })
     }
 
     // REQUIRE host to have Stripe account for upfront payment
-    if (!listingHost.stripe_account_id) {
+    if (!itemHost.stripe_account_id) {
         return NextResponse.json({
             error: 'Host not ready for bookings',
             details: 'This host has not completed their payment setup yet.'
@@ -130,17 +152,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate end time based on duration
-    const startTime = body.start_time
-    const [hours, minutes] = startTime.split(':').map(Number)
+    const [hours, minutes] = start_time.split(':').map(Number)
     const endDate = new Date()
-    endDate.setHours(hours, minutes + listing.duration_minutes)
+    endDate.setHours(hours, minutes + item.duration_minutes)
     const endTime = endDate.toTimeString().slice(0, 5)
 
     // Calculate host response deadline
     // Min of (72 hours from now) OR (2 hours before event start)
     const now = new Date()
     const maxDeadline = new Date(now.getTime() + 72 * 60 * 60 * 1000) // 72 hours
-    const eventStart = new Date(`${body.booking_date}T${startTime}:00`)
+    const eventStart = new Date(`${booking_date}T${start_time}:00`)
     const minDeadline = new Date(eventStart.getTime() - 2 * 60 * 60 * 1000) // 2 hours before
     const hostResponseDeadline = maxDeadline < minDeadline ? maxDeadline : minDeadline
 
@@ -155,18 +176,19 @@ export async function POST(request: NextRequest) {
     // Generate QR code hash
     const qrSecret = process.env.QR_SECRET || process.env.STRIPE_WEBHOOK_SECRET || 'default-qr-salt'
     const randomPart = Math.random().toString(36).substring(2, 10)
-    const qrCodeHash = await generateSecureHash(`${body.listing_id}:${body.booking_date}:${Date.now()}:${qrSecret}:${randomPart}`)
+    const qrCodeHash = await generateSecureHash(`${listing_id || host_location_id}:${booking_date}:${Date.now()}:${qrSecret}:${randomPart}`)
 
     // Create booking first (in pending_payment status)
     const bookingData = {
-        listing_id: body.listing_id,
+        listing_id: listing_id || null,
+        host_location_id: host_location_id || null,
         guest_id: user.id,
-        host_id: listingHost.id,
-        booking_date: body.booking_date,
-        start_time: startTime,
+        host_id: itemHost.id,
+        booking_date: booking_date,
+        start_time: start_time,
         end_time: endTime,
-        venue_selected: body.venue_selected,
-        guest_note: body.guest_note,
+        venue_selected: venue_selected,
+        guest_note: guest_note,
         qr_code_hash: qrCodeHash,
         status: 'pending_payment',
         host_response_deadline: hostResponseDeadline.toISOString(),
@@ -188,8 +210,8 @@ export async function POST(request: NextRequest) {
     let paymentIntent
     try {
         paymentIntent = await createPaymentIntentWithHold(
-            listing.price_yen,
-            listingHost.stripe_account_id,
+            item.price_yen,
+            itemHost.stripe_account_id,
             booking.id
         )
     } catch (stripeError: any) {
@@ -211,7 +233,7 @@ export async function POST(request: NextRequest) {
         .eq('id', booking.id)
 
     // Create transaction record
-    const fees = calculateFees(listing.price_yen)
+    const fees = calculateFees(item.price_yen)
     await supabase
         .from('transactions')
         .insert({
@@ -232,7 +254,7 @@ export async function POST(request: NextRequest) {
             stripe_payment_intent_id: paymentIntent.id,
         },
         client_secret: paymentIntent.client_secret,
-        amount_yen: listing.price_yen,
+        amount_yen: item.price_yen,
         host_response_deadline: hostResponseDeadline.toISOString(),
         message: 'Complete payment to send your booking request to the host.',
     }, { status: 201 })
